@@ -6,12 +6,14 @@ import {
   useState,
 } from 'react'
 import groundBlock from '../../assets/processed/bloque1-crop.png'
+import fall from '../../assets/processed/caer-crop.png'
 import run1 from '../../assets/processed/correr1-crop.png'
 import run2 from '../../assets/processed/correr2-crop.png'
 import run3 from '../../assets/processed/correr3-crop.png'
 import brake from '../../assets/processed/freno-crop.png'
 import idle1 from '../../assets/processed/idle1-crop.png'
 import idle2 from '../../assets/processed/idle2-crop.png'
+import jump from '../../assets/processed/saltar-crop.png'
 
 const SCENE = {
   width: 960,
@@ -33,6 +35,7 @@ const PLAYER = {
 const PLAYER_VISUAL = {
   idleHeight: 60,
   referenceHeight: 910,
+  groundSink: 4,
 }
 
 const PHYSICS = {
@@ -40,9 +43,12 @@ const PHYSICS = {
   acceleration: 1200,
   friction: 1400,
   maxSpeed: 220,
-  brakeDuration: 0.18,
+  jumpVelocity: 760,
+  brakeDuration: 0.38,
+  landingBrakeDuration: 0.32,
   brakeTriggerSpeed: 110,
   runThreshold: 60,
+  airStateThreshold: 45,
 }
 
 const ANIMATION = {
@@ -97,6 +103,22 @@ const SPRITE_METRICS = new Map([
       width: 1078,
       height: 694,
       footAnchorX: 516.94,
+    },
+  ],
+  [
+    jump,
+    {
+      width: 1014,
+      height: 797,
+      footAnchorX: 425.28,
+    },
+  ],
+  [
+    fall,
+    {
+      width: 851,
+      height: 728,
+      footAnchorX: 411.53,
     },
   ],
 ])
@@ -158,7 +180,7 @@ function getSpriteLayout(sprite) {
 
 function chooseSprite(player) {
   if (!player.onGround) {
-    return RUN_FRAMES[1]
+    return player.vy < -PHYSICS.airStateThreshold ? jump : fall
   }
 
   if (player.brakeTimer > 0) {
@@ -177,6 +199,10 @@ function chooseSprite(player) {
 }
 
 function describeAnimation(player) {
+  if (!player.onGround && player.vy < -PHYSICS.airStateThreshold) {
+    return 'Saltando'
+  }
+
   if (!player.onGround) {
     return 'Cayendo'
   }
@@ -195,8 +221,19 @@ function describeAnimation(player) {
 function stepPlayer(player, keys, deltaTime) {
   const dt = Math.min(deltaTime, 1 / 30)
   const input = (keys.right ? 1 : 0) - (keys.left ? 1 : 0)
+  const wasOnGround = player.onGround
   const previousBottom = player.y + PLAYER.height
   const releasedMovement = player.hadInput && input === 0
+
+  if (keys.jumpQueued && player.onGround) {
+    player.vy = -PHYSICS.jumpVelocity
+    player.onGround = false
+    player.brakeTimer = 0
+    player.idleClock = 0
+    player.runClock = 0
+  }
+
+  keys.jumpQueued = false
 
   if (releasedMovement && Math.abs(player.vx) > PHYSICS.brakeTriggerSpeed) {
     player.brakeTimer = PHYSICS.brakeDuration
@@ -232,6 +269,12 @@ function stepPlayer(player, keys, deltaTime) {
     player.y = groundSurfaceY - PLAYER.height
     player.vy = 0
     player.onGround = true
+    if (!wasOnGround) {
+      player.brakeTimer = Math.max(
+        player.brakeTimer,
+        PHYSICS.landingBrakeDuration,
+      )
+    }
   } else {
     player.onGround = false
   }
@@ -281,6 +324,7 @@ export function GameScene() {
   const keysRef = useRef({
     left: false,
     right: false,
+    jumpQueued: false,
   })
 
   const playerRef = useRef(initialPlayer)
@@ -306,6 +350,16 @@ export function GameScene() {
 
       if (event.key === 'ArrowRight' || event.key.toLowerCase() === 'd') {
         keysRef.current.right = pressed
+      }
+
+      if (
+        pressed &&
+        (event.key === ' ' ||
+          event.key === 'ArrowUp' ||
+          event.key.toLowerCase() === 'w')
+      ) {
+        event.preventDefault()
+        keysRef.current.jumpQueued = true
       }
     }
 
@@ -389,7 +443,7 @@ export function GameScene() {
         >
           <div className="hud hud-left">
             <span>Movimiento</span>
-            <strong>A / D o flechas</strong>
+            <strong>A / D + Espacio</strong>
           </div>
 
           <div className="hud hud-right">
@@ -420,7 +474,7 @@ export function GameScene() {
             }`}
             style={{
               left: `${playerFootX - currentFootAnchorX}px`,
-              top: `${playerFootY - currentSpriteLayout.height}px`,
+              top: `${playerFootY - currentSpriteLayout.height + PLAYER_VISUAL.groundSink}px`,
               width: `${currentSpriteLayout.width}px`,
               height: `${currentSpriteLayout.height}px`,
             }}

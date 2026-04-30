@@ -10,7 +10,13 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.vite
 *.local
+coverage
+
+# Local QA artifacts
+.playwright-cli/
+output/playwright/
 
 # Editor directories and files
 .vscode/*
