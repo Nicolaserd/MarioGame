@@ -1,0 +1,23 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - heading "Mario ya cae sobre su bloque de suelo" [level=1] [ref=e5]
+    - paragraph [ref=e6]:
+      - text: Dejamos la base del juego lista con gravedad, una plataforma con tu sprite de suelo y las animaciones de
+      - code [ref=e7]: idle
+      - text: ","
+      - code [ref=e8]: correr
+      - text: "y"
+      - code [ref=e9]: freno
+      - text: .
+  - generic [ref=e12]:
+    - generic [ref=e13]:
+      - generic [ref=e14]: Movimiento
+      - strong [ref=e15]: A / D o flechas
+    - generic [ref=e16]:
+      - generic [ref=e17]: Estado
+      - strong [ref=e18]: Cayendo
+    - generic [ref=e19]:
+      - generic [ref=e20]: Velocidad
+      - strong [ref=e21]: "0"
+    - img "Bloque de suelo" [ref=e23]
+    - img "Mario" [ref=e25]
