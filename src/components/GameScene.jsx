@@ -9,6 +9,9 @@ import backLayer from '../../assets/Entorno/oficina/fondo.png'
 import midLayer from '../../assets/Entorno/oficina/fondo1.png'
 import floorTile from '../../assets/Entorno/oficina/piso.png'
 import heartIcon from '../../assets/Mario/atributos/corazon.png'
+import pizzaIcon from '../../assets/Mario/atributos/pizza.png'
+import throwPose from '../../assets/Mario/atributos/lanzar.png'
+import thrownPizza from '../../assets/Mario/atributos/pizzalanzada.png'
 import fall from '../../assets/processed/caer-crop.png'
 import run1 from '../../assets/processed/correr1-crop.png'
 import run2 from '../../assets/processed/correr2-crop.png'
@@ -45,9 +48,10 @@ const SPAWN = {
 const floorSurfaceY = FLOOR.y + FLOOR.surfaceInset
 
 const PLAYER = {
-  width: 176,
+  width: 96,
   height: 172,
   health: 5,
+  pizzaAmmo: 5,
 }
 
 const PLAYER_VISUAL = {
@@ -67,6 +71,25 @@ const PHYSICS = {
   brakeTriggerSpeed: 110,
   runThreshold: 60,
   airStateThreshold: 45,
+}
+
+const THROW = {
+  duration: 0.28,
+  cooldown: 0.18,
+  handOffsetX: 68,
+  handOffsetY: 63,
+}
+
+const PIZZA = {
+  width: 84,
+  height: 56,
+  hitboxWidth: 58,
+  hitboxHeight: 20,
+  speed: 720,
+  gravity: 220,
+  floorBounceVelocity: 260,
+  maxBounces: 1,
+  regenTime: 5,
 }
 
 const ANIMATION = {
@@ -158,6 +181,14 @@ const SPRITE_METRICS = new Map([
       footAnchorX: 411.53,
     },
   ],
+  [
+    throwPose,
+    {
+      width: 1536,
+      height: 1024,
+      footAnchorX: 545,
+    },
+  ],
 ])
 
 const IDLE_FRAMES = [idle1, idle2]
@@ -194,12 +225,16 @@ function createInitialPlayer() {
     facing: 1,
     onGround: Boolean(spawnSegment),
     brakeTimer: 0,
+    throwTimer: 0,
+    throwCooldown: 0,
     idleClock: 0,
     runClock: 0,
     hadInput: false,
     sprite: idle1,
     deaths: 0,
     health: PLAYER.health,
+    pizzaAmmo: PLAYER.pizzaAmmo,
+    pizzaRegenTimer: 0,
   }
 }
 
@@ -218,6 +253,10 @@ function getSpriteLayout(sprite) {
 }
 
 function chooseSprite(player) {
+  if (player.throwTimer > 0) {
+    return throwPose
+  }
+
   if (!player.onGround) {
     return player.vy < -PHYSICS.airStateThreshold ? jump : fall
   }
@@ -238,6 +277,10 @@ function chooseSprite(player) {
 }
 
 function describeAnimation(player) {
+  if (player.throwTimer > 0) {
+    return 'Lanzando'
+  }
+
   if (!player.onGround && player.vy < -PHYSICS.airStateThreshold) {
     return 'Saltando'
   }
@@ -257,9 +300,79 @@ function describeAnimation(player) {
   return 'Idle'
 }
 
+function createPizza(player) {
+  const direction = player.facing < 0 ? -1 : 1
+  const handX =
+    direction > 0
+      ? player.x + PLAYER.width / 2 + THROW.handOffsetX
+      : player.x + PLAYER.width / 2 - THROW.handOffsetX - PIZZA.width
+
+  return {
+    id: crypto.randomUUID?.() ?? `${performance.now()}-${Math.random()}`,
+    x: handX,
+    y: player.y + THROW.handOffsetY,
+    vx: PIZZA.speed * direction,
+    vy: -80,
+    direction,
+    bounces: 0,
+    active: true,
+  }
+}
+
+function getPizzaHitbox(pizza) {
+  return {
+    x: pizza.x + (PIZZA.width - PIZZA.hitboxWidth) / 2,
+    y: pizza.y + (PIZZA.height - PIZZA.hitboxHeight) / 2,
+    width: PIZZA.hitboxWidth,
+    height: PIZZA.hitboxHeight,
+  }
+}
+
+function stepPizzas(pizzas, deltaTime) {
+  const dt = Math.min(deltaTime, 1 / 30)
+
+  return pizzas
+    .map((pizza) => {
+      const nextPizza = {
+        ...pizza,
+        x: pizza.x + pizza.vx * dt,
+        y: pizza.y + pizza.vy * dt,
+        vy: pizza.vy + PIZZA.gravity * dt,
+      }
+      const hitbox = getPizzaHitbox(nextPizza)
+      const floorSegment = getFloorSegmentAtFoot(hitbox.x + hitbox.width / 2)
+      const hitboxBottom = hitbox.y + hitbox.height
+
+      if (floorSegment && nextPizza.vy >= 0 && hitboxBottom >= floorSurfaceY) {
+        const correctedHitboxTop = floorSurfaceY - PIZZA.hitboxHeight
+        nextPizza.y = correctedHitboxTop - (PIZZA.height - PIZZA.hitboxHeight) / 2
+        nextPizza.bounces += 1
+
+        if (nextPizza.bounces > PIZZA.maxBounces) {
+          nextPizza.active = false
+        } else {
+          nextPizza.vy = -PIZZA.floorBounceVelocity
+          nextPizza.vx *= 0.72
+        }
+      }
+
+      if (
+        nextPizza.x + PIZZA.width < 0 ||
+        nextPizza.x > WORLD.width ||
+        nextPizza.y > WORLD.killY
+      ) {
+        nextPizza.active = false
+      }
+
+      return nextPizza
+    })
+    .filter((pizza) => pizza.active)
+}
+
 function stepPlayer(player, keys, deltaTime) {
   const dt = Math.min(deltaTime, 1 / 30)
   const input = (keys.right ? 1 : 0) - (keys.left ? 1 : 0)
+  const thrownPizzas = []
   const wasOnGround = player.onGround
   const previousBottom = player.y + PLAYER.height
   const releasedMovement = player.hadInput && input === 0
@@ -273,6 +386,20 @@ function stepPlayer(player, keys, deltaTime) {
   }
 
   keys.jumpQueued = false
+
+  if (
+    keys.throwQueued &&
+    player.throwCooldown <= 0 &&
+    player.pizzaAmmo > 0
+  ) {
+    player.pizzaAmmo -= 1
+    player.throwTimer = THROW.duration
+    player.throwCooldown = THROW.duration + THROW.cooldown
+    player.brakeTimer = 0
+    thrownPizzas.push(createPizza(player))
+  }
+
+  keys.throwQueued = false
 
   if (releasedMovement && Math.abs(player.vx) > PHYSICS.brakeTriggerSpeed) {
     player.brakeTimer = PHYSICS.brakeDuration
@@ -335,6 +462,23 @@ function stepPlayer(player, keys, deltaTime) {
   }
 
   player.brakeTimer = Math.max(0, player.brakeTimer - dt)
+  player.throwTimer = Math.max(0, player.throwTimer - dt)
+  player.throwCooldown = Math.max(0, player.throwCooldown - dt)
+
+  if (player.pizzaAmmo < PLAYER.pizzaAmmo) {
+    player.pizzaRegenTimer += dt
+
+    while (
+      player.pizzaRegenTimer >= PIZZA.regenTime &&
+      player.pizzaAmmo < PLAYER.pizzaAmmo
+    ) {
+      player.pizzaAmmo += 1
+      player.pizzaRegenTimer -= PIZZA.regenTime
+    }
+  } else {
+    player.pizzaRegenTimer = 0
+  }
+
   player.hadInput = input !== 0
   player.sprite = chooseSprite(player)
 
@@ -348,6 +492,8 @@ function stepPlayer(player, keys, deltaTime) {
     speed: Math.round(Math.abs(player.vx)),
     deaths: player.deaths,
     health: player.health,
+    pizzaAmmo: player.pizzaAmmo,
+    thrownPizzas,
   }
 }
 
@@ -362,6 +508,7 @@ function toSceneState(player) {
     speed: Math.round(Math.abs(player.vx)),
     deaths: player.deaths,
     health: player.health,
+    pizzaAmmo: player.pizzaAmmo,
   }
 }
 
@@ -382,6 +529,8 @@ export function GameScene() {
     left: false,
     right: false,
     jumpQueued: false,
+    throwQueued: false,
+    throwHeld: false,
   })
 
   const playerRef = useRef(initialPlayer)
@@ -390,6 +539,7 @@ export function GameScene() {
     alignLeft: false,
   })
   const [sceneState, setSceneState] = useState(() => toSceneState(initialPlayer))
+  const [pizzas, setPizzas] = useState([])
   const currentSpriteLayout = getSpriteLayout(sceneState.sprite)
   const currentFootAnchorX =
     sceneState.facing < 0
@@ -401,6 +551,20 @@ export function GameScene() {
 
   useEffect(() => {
     const onKeyChange = (pressed) => (event) => {
+      const key = typeof event.key === 'string' ? event.key.toLowerCase() : ''
+      const code = event.code
+
+      if (key === 'p' || code === 'KeyP') {
+        event.preventDefault()
+
+        if (pressed && !keysRef.current.throwHeld) {
+          keysRef.current.throwQueued = true
+        }
+
+        keysRef.current.throwHeld = pressed
+        return
+      }
+
       if (event.repeat) {
         return
       }
@@ -408,7 +572,7 @@ export function GameScene() {
       if (
         event.key === 'ArrowLeft' ||
         event.code === 'ArrowLeft' ||
-        event.key.toLowerCase() === 'a' ||
+        key === 'a' ||
         event.code === 'KeyA'
       ) {
         keysRef.current.left = pressed
@@ -417,7 +581,7 @@ export function GameScene() {
       if (
         event.key === 'ArrowRight' ||
         event.code === 'ArrowRight' ||
-        event.key.toLowerCase() === 'd' ||
+        key === 'd' ||
         event.code === 'KeyD'
       ) {
         keysRef.current.right = pressed
@@ -429,7 +593,7 @@ export function GameScene() {
           event.code === 'Space' ||
           event.key === 'ArrowUp' ||
           event.code === 'ArrowUp' ||
-          event.key.toLowerCase() === 'w' ||
+          key === 'w' ||
           event.code === 'KeyW')
       ) {
         event.preventDefault()
@@ -450,10 +614,13 @@ export function GameScene() {
   }, [])
 
   const tick = useEffectEvent((deltaTime) => {
-    stepPlayer(playerRef.current, keysRef.current, deltaTime)
+    const playerStep = stepPlayer(playerRef.current, keysRef.current, deltaTime)
 
     startTransition(() => {
       setSceneState(toSceneState(playerRef.current))
+      setPizzas((currentPizzas) =>
+        stepPizzas([...currentPizzas, ...playerStep.thrownPizzas], deltaTime),
+      )
     })
   })
 
@@ -583,6 +750,39 @@ export function GameScene() {
               }}
             />
 
+            {pizzas.map((pizza) => {
+              const hitbox = getPizzaHitbox(pizza)
+
+              return (
+                <div key={pizza.id}>
+                  <div
+                    className="pizza-hitbox"
+                    aria-hidden="true"
+                    style={{
+                      left: `${hitbox.x}px`,
+                      top: `${hitbox.y}px`,
+                      width: `${hitbox.width}px`,
+                      height: `${hitbox.height}px`,
+                    }}
+                  />
+
+                  <div
+                    className={`pizza-sprite ${
+                      pizza.direction < 0 ? 'face-left' : 'face-right'
+                    }`}
+                    style={{
+                      left: `${pizza.x}px`,
+                      top: `${pizza.y}px`,
+                      width: `${PIZZA.width}px`,
+                      height: `${PIZZA.height}px`,
+                    }}
+                  >
+                    <img src={thrownPizza} alt="Pizza lanzada" draggable="false" />
+                  </div>
+                </div>
+              )
+            })}
+
             <div
               className={`player-sprite ${
                 sceneState.facing < 0 ? 'face-left' : 'face-right'
@@ -605,6 +805,21 @@ export function GameScene() {
                   key={index}
                   className={index < sceneState.health ? 'heart-full' : 'heart-empty'}
                   src={heartIcon}
+                  alt=""
+                  draggable="false"
+                />
+              ))}
+            </div>
+
+            <div
+              className="pizza-ammo-row"
+              aria-label={`Pizzas ${sceneState.pizzaAmmo} de 5`}
+            >
+              {Array.from({ length: sceneState.pizzaAmmo }, (_, index) => (
+                <img
+                  key={index}
+                  className="pizza-full"
+                  src={pizzaIcon}
                   alt=""
                   draggable="false"
                 />
