@@ -5,7 +5,10 @@ import {
   useRef,
   useState,
 } from 'react'
-import groundBlock from '../../assets/processed/bloque1-crop.png'
+import backLayer from '../../assets/Entorno/oficina/fondo.png'
+import midLayer from '../../assets/Entorno/oficina/fondo1.png'
+import floorTile from '../../assets/Entorno/oficina/piso.png'
+import heartIcon from '../../assets/Mario/atributos/corazon.png'
 import fall from '../../assets/processed/caer-crop.png'
 import run1 from '../../assets/processed/correr1-crop.png'
 import run2 from '../../assets/processed/correr2-crop.png'
@@ -20,29 +23,44 @@ const SCENE = {
   height: 560,
 }
 
-const GROUND = {
-  width: 760,
-  height: 310,
-  bottom: 26,
-  surfaceInset: 34,
+const WORLD = {
+  width: 4200,
+  killY: 900,
 }
+
+const FLOOR = {
+  y: 460,
+  height: 136,
+  surfaceInset: 10,
+}
+
+const FLOOR_SEGMENTS = [
+  { x: -120, width: WORLD.width + 240 },
+]
+
+const SPAWN = {
+  x: 92,
+}
+
+const floorSurfaceY = FLOOR.y + FLOOR.surfaceInset
 
 const PLAYER = {
   width: 176,
-  height: 236,
+  height: 172,
+  health: 5,
 }
 
 const PLAYER_VISUAL = {
-  idleHeight: 60,
+  idleHeight: 172,
   referenceHeight: 910,
-  groundSink: 4,
+  groundSink: 1,
 }
 
 const PHYSICS = {
   gravity: 1950,
   acceleration: 1200,
   friction: 1400,
-  maxSpeed: 220,
+  maxSpeed: 300,
   jumpVelocity: 760,
   brakeDuration: 0.38,
   landingBrakeDuration: 0.32,
@@ -55,6 +73,25 @@ const ANIMATION = {
   idleFrameTime: 0.5,
   runFrameTime: 0.11,
 }
+
+const PARALLAX_LAYERS = [
+  {
+    name: 'fondo de atras',
+    image: backLayer,
+    depth: 0.14,
+    verticalDepth: 0.08,
+    size: '995px 560px',
+    className: 'parallax-back',
+  },
+  {
+    name: 'escritorios',
+    image: midLayer,
+    depth: 0.42,
+    verticalDepth: 1,
+    size: '690px 460px',
+    className: 'parallax-desks',
+  },
+]
 
 const SPRITE_METRICS = new Map([
   [
@@ -139,28 +176,30 @@ const SPRITE_LAYOUTS = new Map(
   ]),
 )
 
-const groundRect = {
-  x: (SCENE.width - GROUND.width) / 2,
-  y: SCENE.height - GROUND.height - GROUND.bottom,
-  width: GROUND.width,
-  height: GROUND.height,
+function getFloorSegmentAtFoot(footX) {
+  return FLOOR_SEGMENTS.find(
+    (segment) => footX >= segment.x + 24 && footX <= segment.x + segment.width - 24,
+  )
 }
 
-const groundSurfaceY = groundRect.y + GROUND.surfaceInset
-
 function createInitialPlayer() {
+  const spawnSegment = getFloorSegmentAtFoot(SPAWN.x + PLAYER.width / 2)
+  const spawnY = (spawnSegment ? floorSurfaceY : SCENE.height / 2) - PLAYER.height
+
   return {
-    x: groundRect.x + groundRect.width / 2 - PLAYER.width / 2,
-    y: groundSurfaceY - PLAYER.height - 136,
+    x: SPAWN.x,
+    y: spawnY,
     vx: 0,
     vy: 0,
     facing: 1,
-    onGround: false,
+    onGround: Boolean(spawnSegment),
     brakeTimer: 0,
     idleClock: 0,
     runClock: 0,
     hadInput: false,
     sprite: idle1,
+    deaths: 0,
+    health: PLAYER.health,
   }
 }
 
@@ -254,19 +293,19 @@ function stepPlayer(player, keys, deltaTime) {
   player.x += player.vx * dt
   player.y += player.vy * dt
 
-  player.x = clamp(player.x, 12, SCENE.width - PLAYER.width - 12)
+  player.x = clamp(player.x, 0, WORLD.width - PLAYER.width)
 
   const currentBottom = player.y + PLAYER.height
   const playerFoot = player.x + PLAYER.width / 2
+  const floorSegment = getFloorSegmentAtFoot(playerFoot)
   const standingOnGround =
     player.vy >= 0 &&
-    previousBottom <= groundSurfaceY &&
-    currentBottom >= groundSurfaceY &&
-    playerFoot >= groundRect.x + 28 &&
-    playerFoot <= groundRect.x + groundRect.width - 28
+    currentBottom >= floorSurfaceY &&
+    (wasOnGround || previousBottom <= floorSurfaceY) &&
+    Boolean(floorSegment)
 
   if (standingOnGround) {
-    player.y = groundSurfaceY - PLAYER.height
+    player.y = floorSurfaceY - PLAYER.height
     player.vy = 0
     player.onGround = true
     if (!wasOnGround) {
@@ -279,8 +318,12 @@ function stepPlayer(player, keys, deltaTime) {
     player.onGround = false
   }
 
-  if (player.y > SCENE.height + 240) {
-    Object.assign(player, createInitialPlayer())
+  if (player.y > WORLD.killY) {
+    const deaths = player.deaths + 1
+    Object.assign(player, createInitialPlayer(), {
+      deaths,
+      brakeTimer: PHYSICS.landingBrakeDuration,
+    })
   }
 
   if (player.onGround && Math.abs(player.vx) > PHYSICS.runThreshold) {
@@ -303,6 +346,8 @@ function stepPlayer(player, keys, deltaTime) {
     onGround: player.onGround,
     animation: describeAnimation(player),
     speed: Math.round(Math.abs(player.vx)),
+    deaths: player.deaths,
+    health: player.health,
   }
 }
 
@@ -315,6 +360,18 @@ function toSceneState(player) {
     onGround: player.onGround,
     animation: describeAnimation(player),
     speed: Math.round(Math.abs(player.vx)),
+    deaths: player.deaths,
+    health: player.health,
+  }
+}
+
+function getCamera(player) {
+  const targetX = player.x + PLAYER.width / 2 - SCENE.width * 0.22
+  const targetY = player.y + PLAYER.height - floorSurfaceY
+
+  return {
+    x: clamp(targetX, 0, WORLD.width - SCENE.width),
+    y: clamp(targetY, -118, 80),
   }
 }
 
@@ -328,7 +385,10 @@ export function GameScene() {
   })
 
   const playerRef = useRef(initialPlayer)
-  const [worldScale, setWorldScale] = useState(1)
+  const [sceneFit, setSceneFit] = useState({
+    scale: 1,
+    alignLeft: false,
+  })
   const [sceneState, setSceneState] = useState(() => toSceneState(initialPlayer))
   const currentSpriteLayout = getSpriteLayout(sceneState.sprite)
   const currentFootAnchorX =
@@ -337,6 +397,7 @@ export function GameScene() {
       : currentSpriteLayout.footAnchorX
   const playerFootX = sceneState.x + PLAYER.width / 2
   const playerFootY = sceneState.y + PLAYER.height
+  const camera = getCamera(sceneState)
 
   useEffect(() => {
     const onKeyChange = (pressed) => (event) => {
@@ -344,19 +405,32 @@ export function GameScene() {
         return
       }
 
-      if (event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a') {
+      if (
+        event.key === 'ArrowLeft' ||
+        event.code === 'ArrowLeft' ||
+        event.key.toLowerCase() === 'a' ||
+        event.code === 'KeyA'
+      ) {
         keysRef.current.left = pressed
       }
 
-      if (event.key === 'ArrowRight' || event.key.toLowerCase() === 'd') {
+      if (
+        event.key === 'ArrowRight' ||
+        event.code === 'ArrowRight' ||
+        event.key.toLowerCase() === 'd' ||
+        event.code === 'KeyD'
+      ) {
         keysRef.current.right = pressed
       }
 
       if (
         pressed &&
         (event.key === ' ' ||
+          event.code === 'Space' ||
           event.key === 'ArrowUp' ||
-          event.key.toLowerCase() === 'w')
+          event.code === 'ArrowUp' ||
+          event.key.toLowerCase() === 'w' ||
+          event.code === 'KeyW')
       ) {
         event.preventDefault()
         keysRef.current.jumpQueued = true
@@ -393,7 +467,13 @@ export function GameScene() {
     const syncScale = () => {
       const widthScale = viewport.clientWidth / SCENE.width
       const heightScale = viewport.clientHeight / SCENE.height
-      setWorldScale(Math.min(widthScale, heightScale))
+      const isNarrow = viewport.clientWidth < 720
+      const scale = Math.max(widthScale, heightScale)
+
+      setSceneFit({
+        scale,
+        alignLeft: isNarrow,
+      })
     }
 
     syncScale()
@@ -438,48 +518,98 @@ export function GameScene() {
           style={{
             width: `${SCENE.width}px`,
             height: `${SCENE.height}px`,
-            transform: `translate(-50%, -50%) scale(${worldScale})`,
+            left: sceneFit.alignLeft ? '0' : '50%',
+            transformOrigin: sceneFit.alignLeft ? 'left center' : 'center center',
+            transform: sceneFit.alignLeft
+              ? `translateY(-50%) scale(${sceneFit.scale})`
+              : `translate(-50%, -50%) scale(${sceneFit.scale})`,
           }}
         >
-          <div className="hud hud-left">
-            <span>Movimiento</span>
-            <strong>A / D + Espacio</strong>
-          </div>
-
-          <div className="hud hud-right">
-            <span>Estado</span>
-            <strong>{sceneState.animation}</strong>
-          </div>
-
-          <div className="hud hud-bottom">
-            <span>Velocidad</span>
-            <strong>{sceneState.speed}</strong>
-          </div>
+          <div
+            className={`parallax-layer ${PARALLAX_LAYERS[0].className}`}
+            aria-hidden="true"
+            style={{
+              '--layer-image': `url(${PARALLAX_LAYERS[0].image})`,
+              '--layer-size': PARALLAX_LAYERS[0].size,
+              transform: `translate3d(${-camera.x * PARALLAX_LAYERS[0].depth}px, ${
+                -camera.y * PARALLAX_LAYERS[0].verticalDepth
+              }px, 0)`,
+            }}
+          />
 
           <div
-            className="ground-platform"
+            className={`parallax-layer ${PARALLAX_LAYERS[1].className}`}
+            aria-hidden="true"
             style={{
-              left: `${groundRect.x}px`,
-              top: `${groundRect.y}px`,
-              width: `${groundRect.width}px`,
-              height: `${groundRect.height}px`,
+              '--layer-image': `url(${PARALLAX_LAYERS[1].image})`,
+              '--layer-size': PARALLAX_LAYERS[1].size,
+              transform: `translate3d(${-camera.x * PARALLAX_LAYERS[1].depth}px, ${
+                -camera.y * PARALLAX_LAYERS[1].verticalDepth
+              }px, 0)`,
             }}
-          >
-            <img src={groundBlock} alt="Bloque de suelo" draggable="false" />
-          </div>
+          />
 
           <div
-            className={`player-sprite ${
-              sceneState.facing < 0 ? 'face-left' : 'face-right'
-            }`}
+            className="world-entities"
             style={{
-              left: `${playerFootX - currentFootAnchorX}px`,
-              top: `${playerFootY - currentSpriteLayout.height + PLAYER_VISUAL.groundSink}px`,
-              width: `${currentSpriteLayout.width}px`,
-              height: `${currentSpriteLayout.height}px`,
+              width: `${WORLD.width}px`,
+              height: `${SCENE.height}px`,
+              transform: `translate3d(${-camera.x}px, ${-camera.y}px, 0)`,
             }}
           >
-            <img src={sceneState.sprite} alt="Mario" draggable="false" />
+            {FLOOR_SEGMENTS.map((segment) => (
+              <div
+                key={`${segment.x}-${segment.width}`}
+                className="floor-segment"
+                style={{
+                  left: `${segment.x}px`,
+                  top: `${FLOOR.y}px`,
+                  width: `${segment.width}px`,
+                  height: `${FLOOR.height}px`,
+                }}
+              >
+                <img src={floorTile} alt="Piso de oficina" draggable="false" />
+              </div>
+            ))}
+
+            <div
+              className="player-hitbox"
+              aria-hidden="true"
+              style={{
+                left: `${sceneState.x}px`,
+                top: `${sceneState.y}px`,
+                width: `${PLAYER.width}px`,
+                height: `${PLAYER.height}px`,
+              }}
+            />
+
+            <div
+              className={`player-sprite ${
+                sceneState.facing < 0 ? 'face-left' : 'face-right'
+              }`}
+              style={{
+                left: `${playerFootX - currentFootAnchorX}px`,
+                top: `${playerFootY - currentSpriteLayout.height + PLAYER_VISUAL.groundSink}px`,
+                width: `${currentSpriteLayout.width}px`,
+                height: `${currentSpriteLayout.height}px`,
+              }}
+            >
+              <img src={sceneState.sprite} alt="Mario" draggable="false" />
+            </div>
+          </div>
+
+          <div className="health-hud" aria-label={`Vida ${sceneState.health} de 5`}>
+            <div className="heart-row">
+              {Array.from({ length: PLAYER.health }, (_, index) => (
+                <img
+                  key={index}
+                  className={index < sceneState.health ? 'heart-full' : 'heart-empty'}
+                  src={heartIcon}
+                  alt=""
+                  draggable="false"
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>
