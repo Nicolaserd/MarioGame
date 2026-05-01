@@ -58,6 +58,8 @@ npm run lint
 - `S` o `ArrowDown`: agacharse.
 - `P`: lanzar pizza, o botella durante la parte post-gas de la util.
 - `G`: activar la util si hay una botella disponible.
+- `O`: activar escudo durante 3 segundos, con cooldown de 9 segundos.
+- `M`: forzar muerte del personaje.
 - `Escape`: abrir o cerrar el menu de pausa.
 - Click en el boton de menu: pausa el juego y abre el menu.
 
@@ -108,6 +110,11 @@ npm run lint
 - `assets/Mario/marioutil/util5.png`
 - `assets/Mario/marioutil/util6.png`
 - `assets/Mario/marioutil/vomitoGas.png`
+- `assets/Mario/morir/morir1.png`
+- `assets/Mario/morir/morir2.png`
+- `assets/Mario/morir/morir3.png`
+- `assets/Mario/Escudo/escudo1.png`
+- `assets/Mario/Escudo/escudo2.png`
 
 ### Procesados
 
@@ -130,6 +137,11 @@ El juego usa versiones recortadas para Mario:
 - `assets/processed/util6-crop.png`
 - `assets/processed/vomitoGas-crop.png`
 - `assets/processed/Botellas-crop.png`
+- `assets/processed/morir1-crop.png`
+- `assets/processed/morir2-crop.png`
+- `assets/processed/morir3-crop.png`
+- `assets/processed/escudo1-crop.png`
+- `assets/processed/escudo2-crop.png`
 
 Tambien existe `assets/processed/bloque1-crop.png`, pero el suelo actual usa `assets/Entorno/oficina/piso.png`.
 
@@ -161,10 +173,14 @@ Todo esta centralizado en `src/components/GameScene.jsx`.
 - `Frenando`
 - `Lanzando`
 - `Agachado`
+- `Muriendo`
+- `Escudo`
 
 ### Reglas principales
 
 - Si `throwTimer > 0`: usa `lanzar`.
+- Si `dying` es true: usa `morir1`, `morir2`, `morir3`.
+- Si `shieldTimer > 0`: usa `escudo1` rapidamente y luego `escudo2` hasta terminar el escudo.
 - Si la util esta activa antes del gas: usa `util1` a `util6`.
 - Despues de lanzar el gas sigue en util durante 10 segundos, pero vuelve a estados normales y puede lanzar botellas con `P`.
 - Si esta en el aire y sube: usa `saltar`.
@@ -176,6 +192,8 @@ Todo esta centralizado en `src/components/GameScene.jsx`.
 - Mientras esta agachado, el input horizontal se ignora y no puede saltar hasta soltar abajo.
 - Durante el flash y la animacion previa al gas, Mario queda quieto e invulnerable (`player.invulnerable = true`).
 - Justo despues de lanzar el gas, Mario deja de ser invulnerable y puede volver a moverse, saltar, correr o agacharse.
+- Si se presiona `M` o `health <= 0`, se inicia la muerte: bloquea controles, reproduce `morir1`, `morir2`, `morir3` lento, `morir3` dura un poco mas y sube unos pixeles antes del reinicio.
+- Si se presiona `O` y no esta en cooldown, el escudo dura 3 segundos, bloquea correr/saltar y evita dano.
 
 ### Fisica
 
@@ -256,6 +274,25 @@ Menu de pausa:
 - Durante toda la fase activa Mario muestra rayos animados rosas y amarillos sin hitbox.
 - Proyectiles de util se guardan en `utilityProjectiles` y se actualizan con `stepUtilityProjectiles`.
 
+## Muerte
+
+- Se fuerza con `M`.
+- Tambien se dispara cuando `player.health <= 0`.
+- Usa `DEATH.frameDurations` para reproducir `morir1`, `morir2` y `morir3` lento.
+- `morir3` dura mas y al entrar en ese frame el personaje sube `DEATH.riseDistance` pixeles.
+- Durante la muerte no hay control, no hay util, no hay lanzamiento y Mario queda quieto.
+- Al terminar, se reinicia el jugador con `createInitialPlayer()`, se suma `deaths` y se limpian pizzas/proyectiles de util.
+
+## Escudo
+
+- Se activa con `O`.
+- Dura maximo `SHIELD.duration = 3` segundos.
+- Si el usuario suelta `O`, el escudo se desactiva de inmediato.
+- Tiene cooldown de `SHIELD.cooldown = 9` segundos.
+- Mientras esta activo, Mario queda inmune (`invulnerable = true`), quieto y no puede correr ni saltar.
+- La animacion empieza rapido con `escudo1` (`SHIELD.introDuration`) y luego mantiene `escudo2`.
+- Al terminar vuelve al estado normal que corresponda segun input/fisica.
+
 ## Arquitectura actual
 
 - Un componente principal: `GameScene`.
@@ -305,6 +342,8 @@ Revisar:
 - `crouching`
 - `utilityPhase`
 - `invulnerable`
+- `shieldTimer`
+- `shieldCooldown`
 - `landingBrakeDuration`
 - `getCamera`
 

@@ -22,6 +22,11 @@ import brake from '../../assets/processed/freno-crop.png'
 import idle1 from '../../assets/processed/idle1-crop.png'
 import idle2 from '../../assets/processed/idle2-crop.png'
 import jump from '../../assets/processed/saltar-crop.png'
+import death1 from '../../assets/processed/morir1-crop.png'
+import death2 from '../../assets/processed/morir2-crop.png'
+import death3 from '../../assets/processed/morir3-crop.png'
+import shield1 from '../../assets/processed/escudo1-crop.png'
+import shield2 from '../../assets/processed/escudo2-crop.png'
 import util1 from '../../assets/processed/util1-crop.png'
 import util2 from '../../assets/processed/util2-crop.png'
 import util3 from '../../assets/processed/util3-crop.png'
@@ -142,6 +147,17 @@ const ANIMATION = {
   utilityFrameTime: 0.5,
 }
 
+const DEATH = {
+  frameDurations: [1.35, 1.35, 2.1],
+  riseDistance: 38,
+}
+
+const SHIELD = {
+  duration: 3,
+  cooldown: 9,
+  introDuration: 0.22,
+}
+
 const PARALLAX_LAYERS = [
   {
     name: 'fondo de atras',
@@ -236,6 +252,46 @@ const SPRITE_METRICS = new Map([
     },
   ],
   [
+    death1,
+    {
+      width: 610,
+      height: 910,
+      footAnchorX: 290,
+    },
+  ],
+  [
+    death2,
+    {
+      width: 1300,
+      height: 560,
+      footAnchorX: 625,
+    },
+  ],
+  [
+    death3,
+    {
+      width: 1020,
+      height: 840,
+      footAnchorX: 510,
+    },
+  ],
+  [
+    shield1,
+    {
+      width: 560,
+      height: 900,
+      footAnchorX: 270,
+    },
+  ],
+  [
+    shield2,
+    {
+      width: 900,
+      height: 920,
+      footAnchorX: 350,
+    },
+  ],
+  [
     util1,
     {
       width: 900,
@@ -296,6 +352,7 @@ const SPRITE_METRICS = new Map([
 const IDLE_FRAMES = [idle1, idle2]
 const RUN_FRAMES = [run1, run2, run3]
 const UTILITY_FRAMES = [util1, util2, util3, util4, util5, util6]
+const DEATH_FRAMES = [death1, death2, death3]
 const PLAYER_VISUAL_SCALE =
   PLAYER_VISUAL.idleHeight / PLAYER_VISUAL.referenceHeight
 
@@ -346,6 +403,10 @@ function createInitialPlayer() {
     utilityRegenTimer: 0,
     utilityGasLaunched: false,
     invulnerable: false,
+    shieldTimer: 0,
+    shieldCooldown: 0,
+    dying: false,
+    deathTimer: 0,
     hadInput: false,
     crouching: false,
     sprite: idle1,
@@ -365,6 +426,9 @@ function createEmptyKeys() {
     throwHeld: false,
     utilityQueued: false,
     utilityHeld: false,
+    shieldQueued: false,
+    shieldHeld: false,
+    deathQueued: false,
     down: false,
   }
 }
@@ -383,7 +447,35 @@ function getSpriteLayout(sprite) {
   )
 }
 
+function getDeathFrameIndex(deathTimer) {
+  let elapsed = 0
+
+  for (let index = 0; index < DEATH.frameDurations.length; index += 1) {
+    elapsed += DEATH.frameDurations[index]
+
+    if (deathTimer < elapsed) {
+      return index
+    }
+  }
+
+  return DEATH_FRAMES.length - 1
+}
+
+function getDeathDuration() {
+  return DEATH.frameDurations.reduce((total, duration) => total + duration, 0)
+}
+
 function chooseSprite(player) {
+  if (player.dying) {
+    return DEATH_FRAMES[getDeathFrameIndex(player.deathTimer)]
+  }
+
+  if (player.shieldTimer > 0) {
+    return player.shieldTimer > SHIELD.duration - SHIELD.introDuration
+      ? shield1
+      : shield2
+  }
+
   if (player.utilityPhase === 'active' && !player.utilityGasLaunched) {
     const utilityIndex = Math.min(
       UTILITY_FRAMES.length - 1,
@@ -421,6 +513,14 @@ function chooseSprite(player) {
 }
 
 function describeAnimation(player) {
+  if (player.dying) {
+    return 'Muriendo'
+  }
+
+  if (player.shieldTimer > 0) {
+    return 'Escudo'
+  }
+
   if (player.utilityPhase === 'flash') {
     return 'Preparando util'
   }
@@ -617,15 +717,114 @@ function stepUtilityProjectiles(projectiles, deltaTime) {
     .filter((projectile) => projectile.active)
 }
 
+function startDeath(player) {
+  player.dying = true
+  player.deathTimer = 0
+  player.vx = 0
+  player.vy = 0
+  player.onGround = true
+  player.brakeTimer = 0
+  player.throwTimer = 0
+  player.throwCooldown = 0
+  player.utilityPhase = 'idle'
+  player.utilityTimer = 0
+  player.utilityAnimationClock = 0
+  player.utilityGasLaunched = false
+  player.invulnerable = false
+  player.shieldTimer = 0
+  player.crouching = false
+}
+
 function stepPlayer(player, keys, deltaTime) {
   const dt = Math.min(deltaTime, 1 / 30)
   const timerDt = Math.min(deltaTime, 0.5)
+  const previousDeathFrame = getDeathFrameIndex(player.deathTimer)
+  const wasDying = player.dying
+  const respawnedAfterDeath = { current: false }
+  const shouldStartDeath =
+    !player.dying && (keys.deathQueued || player.health <= 0)
+
+  if (shouldStartDeath) {
+    startDeath(player)
+  }
+
+  keys.deathQueued = false
+
+  if (player.dying) {
+    player.deathTimer += timerDt
+
+    if (
+      previousDeathFrame < DEATH_FRAMES.length - 1 &&
+      getDeathFrameIndex(player.deathTimer) === DEATH_FRAMES.length - 1
+    ) {
+      player.y -= DEATH.riseDistance
+    }
+
+    if (player.deathTimer >= getDeathDuration()) {
+      const deaths = player.deaths + 1
+      Object.assign(player, createInitialPlayer(), {
+        deaths,
+        brakeTimer: PHYSICS.landingBrakeDuration,
+      })
+      respawnedAfterDeath.current = true
+    } else {
+      player.sprite = chooseSprite(player)
+
+      return {
+        x: player.x,
+        y: player.y,
+        sprite: player.sprite,
+        facing: player.facing,
+        onGround: player.onGround,
+        animation: describeAnimation(player),
+        speed: 0,
+        deaths: player.deaths,
+        health: player.health,
+        pizzaAmmo: player.pizzaAmmo,
+    utilityCharges: player.utilityCharges,
+        utilityPhase: player.utilityPhase,
+    utilityTimer: player.utilityTimer,
+    invulnerable: player.invulnerable,
+    shieldTimer: player.shieldTimer,
+    shieldCooldown: player.shieldCooldown,
+    dying: player.dying,
+        deathTimer: player.deathTimer,
+        resetProjectiles: shouldStartDeath,
+        thrownPizzas: [],
+        thrownUtilityProjectiles: [],
+      }
+    }
+  }
+
+  if (
+    keys.shieldQueued &&
+    player.shieldTimer <= 0 &&
+    player.shieldCooldown <= 0 &&
+    !player.dying &&
+    player.utilityPhase !== 'flash' &&
+    !(player.utilityPhase === 'active' && !player.utilityGasLaunched)
+  ) {
+    player.shieldTimer = SHIELD.duration
+    player.shieldCooldown = SHIELD.cooldown
+    player.vx = 0
+    player.brakeTimer = 0
+    player.throwTimer = 0
+  }
+
+  keys.shieldQueued = false
+
+  if (player.shieldTimer > 0 && !keys.shieldHeld) {
+    player.shieldTimer = 0
+  }
+
   const utilityLocked =
     player.utilityPhase === 'flash' ||
     (player.utilityPhase === 'active' && !player.utilityGasLaunched)
+  const shieldActive = player.shieldTimer > 0
+  const actionLocked = utilityLocked || shieldActive
   const rawInput = (keys.right ? 1 : 0) - (keys.left ? 1 : 0)
-  const wantsCrouch = keys.down && player.onGround && !utilityLocked
-  const input = wantsCrouch || utilityLocked ? 0 : rawInput
+  const wantsCrouch = keys.down && player.onGround && !actionLocked
+  const input = wantsCrouch || actionLocked ? 0 : rawInput
   const thrownPizzas = []
   const thrownUtilityProjectiles = []
   const wasOnGround = player.onGround
@@ -694,10 +893,11 @@ function stepPlayer(player, keys, deltaTime) {
   }
 
   player.invulnerable =
+    shieldActive ||
     player.utilityPhase === 'flash' ||
     (player.utilityPhase === 'active' && !player.utilityGasLaunched)
 
-  if (keys.jumpQueued && player.onGround && !wantsCrouch && !utilityLocked) {
+  if (keys.jumpQueued && player.onGround && !wantsCrouch && !actionLocked) {
     player.vy = -PHYSICS.jumpVelocity
     player.onGround = false
     player.brakeTimer = 0
@@ -720,7 +920,7 @@ function stepPlayer(player, keys, deltaTime) {
     keys.throwQueued &&
     player.throwCooldown <= 0 &&
     player.pizzaAmmo > 0 &&
-    !utilityLocked
+    !actionLocked
   ) {
     player.pizzaAmmo -= 1
     player.throwTimer = THROW.duration
@@ -734,7 +934,7 @@ function stepPlayer(player, keys, deltaTime) {
   if (
     releasedMovement &&
     Math.abs(player.vx) > PHYSICS.brakeTriggerSpeed &&
-    !utilityLocked
+    !actionLocked
   ) {
     player.brakeTimer = PHYSICS.brakeDuration
   }
@@ -779,14 +979,10 @@ function stepPlayer(player, keys, deltaTime) {
     player.onGround = false
   }
 
-  player.crouching = keys.down && player.onGround && !utilityLocked
+  player.crouching = keys.down && player.onGround && !actionLocked
 
   if (player.y > WORLD.killY) {
-    const deaths = player.deaths + 1
-    Object.assign(player, createInitialPlayer(), {
-      deaths,
-      brakeTimer: PHYSICS.landingBrakeDuration,
-    })
+    startDeath(player)
   }
 
   if (player.onGround && Math.abs(player.vx) > PHYSICS.runThreshold) {
@@ -800,6 +996,8 @@ function stepPlayer(player, keys, deltaTime) {
   player.brakeTimer = Math.max(0, player.brakeTimer - timerDt)
   player.throwTimer = Math.max(0, player.throwTimer - timerDt)
   player.throwCooldown = Math.max(0, player.throwCooldown - timerDt)
+  player.shieldTimer = Math.max(0, player.shieldTimer - timerDt)
+  player.shieldCooldown = Math.max(0, player.shieldCooldown - timerDt)
 
   if (player.pizzaAmmo < PLAYER.pizzaAmmo) {
     player.pizzaRegenTimer += timerDt
@@ -847,6 +1045,11 @@ function stepPlayer(player, keys, deltaTime) {
     utilityPhase: player.utilityPhase,
     utilityTimer: player.utilityTimer,
     invulnerable: player.invulnerable,
+    shieldTimer: player.shieldTimer,
+    shieldCooldown: player.shieldCooldown,
+    dying: player.dying,
+    deathTimer: player.deathTimer,
+    resetProjectiles: wasDying && respawnedAfterDeath.current,
     thrownPizzas,
     thrownUtilityProjectiles,
   }
@@ -868,6 +1071,10 @@ function toSceneState(player) {
     utilityPhase: player.utilityPhase,
     utilityTimer: player.utilityTimer,
     invulnerable: player.invulnerable,
+    shieldTimer: player.shieldTimer,
+    shieldCooldown: player.shieldCooldown,
+    dying: player.dying,
+    deathTimer: player.deathTimer,
   }
 }
 
@@ -982,6 +1189,23 @@ export function GameScene() {
         return
       }
 
+      if (key === 'o' || code === 'KeyO') {
+        event.preventDefault()
+
+        if (pressed && !keysRef.current.shieldHeld) {
+          keysRef.current.shieldQueued = true
+        }
+
+        keysRef.current.shieldHeld = pressed
+        return
+      }
+
+      if (pressed && (key === 'm' || code === 'KeyM')) {
+        event.preventDefault()
+        keysRef.current.deathQueued = true
+        return
+      }
+
       if (event.repeat) {
         return
       }
@@ -1046,13 +1270,17 @@ export function GameScene() {
     startTransition(() => {
       setSceneState(toSceneState(playerRef.current))
       setPizzas((currentPizzas) =>
-        stepPizzas([...currentPizzas, ...playerStep.thrownPizzas], deltaTime),
+        playerStep.resetProjectiles
+          ? []
+          : stepPizzas([...currentPizzas, ...playerStep.thrownPizzas], deltaTime),
       )
       setUtilityProjectiles((currentProjectiles) =>
-        stepUtilityProjectiles(
-          [...currentProjectiles, ...playerStep.thrownUtilityProjectiles],
-          deltaTime,
-        ),
+        playerStep.resetProjectiles
+          ? []
+          : stepUtilityProjectiles(
+              [...currentProjectiles, ...playerStep.thrownUtilityProjectiles],
+              deltaTime,
+            ),
       )
     })
   })
@@ -1398,6 +1626,10 @@ export function GameScene() {
                   <strong>Lanzar pizza / botella en util</strong>
                   <span>G</span>
                   <strong>Activar la util</strong>
+                  <span>O</span>
+                  <strong>Escudo</strong>
+                  <span>M</span>
+                  <strong>Forzar muerte</strong>
                   <span>Escape</span>
                   <strong>Pausar o volver al juego</strong>
                 </div>
