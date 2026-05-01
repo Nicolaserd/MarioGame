@@ -12,6 +12,8 @@ import heartIcon from '../../assets/Mario/atributos/corazon.png'
 import pizzaIcon from '../../assets/Mario/atributos/pizza.png'
 import throwPose from '../../assets/Mario/atributos/lanzar.png'
 import thrownPizza from '../../assets/Mario/atributos/pizzalanzada.png'
+import bottleIcon from '../../assets/processed/Botellas-crop.png'
+import crouch from '../../assets/processed/agachar-crop.png'
 import fall from '../../assets/processed/caer-crop.png'
 import run1 from '../../assets/processed/correr1-crop.png'
 import run2 from '../../assets/processed/correr2-crop.png'
@@ -20,6 +22,13 @@ import brake from '../../assets/processed/freno-crop.png'
 import idle1 from '../../assets/processed/idle1-crop.png'
 import idle2 from '../../assets/processed/idle2-crop.png'
 import jump from '../../assets/processed/saltar-crop.png'
+import util1 from '../../assets/processed/util1-crop.png'
+import util2 from '../../assets/processed/util2-crop.png'
+import util3 from '../../assets/processed/util3-crop.png'
+import util4 from '../../assets/processed/util4-crop.png'
+import util5 from '../../assets/processed/util5-crop.png'
+import util6 from '../../assets/processed/util6-crop.png'
+import vomitGas from '../../assets/processed/vomitoGas-crop.png'
 
 const SCENE = {
   width: 960,
@@ -57,6 +66,7 @@ const PLAYER = {
 const PLAYER_VISUAL = {
   idleHeight: 172,
   referenceHeight: 910,
+  crouchHeightRatio: 0.6,
   groundSink: 1,
 }
 
@@ -85,6 +95,7 @@ const PIZZA = {
   height: 56,
   hitboxWidth: 58,
   hitboxHeight: 20,
+  damage: 1,
   speed: 720,
   gravity: 220,
   floorBounceVelocity: 260,
@@ -92,9 +103,43 @@ const PIZZA = {
   regenTime: 5,
 }
 
+const UTILITY = {
+  maxCharges: 2,
+  chargeRegenTime: 120,
+  flashDuration: 4,
+  gasLaunchTime: 2.55,
+  postGasDuration: 10,
+  bottleCooldown: 0.38,
+}
+
+const GAS = {
+  width: 196,
+  height: 42,
+  hitboxWidth: 176,
+  hitboxHeight: 28,
+  damage: 5,
+  speed: 620,
+  lifetime: 1.4,
+  mouthOffsetX: 70,
+  mouthOffsetY: 52,
+}
+
+const BOTTLE = {
+  width: 68,
+  height: 24,
+  hitboxWidth: 54,
+  hitboxHeight: 18,
+  damage: 2,
+  speed: 760,
+  gravity: 260,
+  handOffsetX: 62,
+  handOffsetY: 62,
+}
+
 const ANIMATION = {
   idleFrameTime: 0.5,
   runFrameTime: 0.11,
+  utilityFrameTime: 0.5,
 }
 
 const PARALLAX_LAYERS = [
@@ -182,6 +227,63 @@ const SPRITE_METRICS = new Map([
     },
   ],
   [
+    crouch,
+    {
+      width: 690,
+      height: 790,
+      footAnchorX: 310,
+      visualHeight: PLAYER_VISUAL.idleHeight * PLAYER_VISUAL.crouchHeightRatio,
+    },
+  ],
+  [
+    util1,
+    {
+      width: 900,
+      height: 930,
+      footAnchorX: 452,
+    },
+  ],
+  [
+    util2,
+    {
+      width: 900,
+      height: 930,
+      footAnchorX: 452,
+    },
+  ],
+  [
+    util3,
+    {
+      width: 900,
+      height: 930,
+      footAnchorX: 452,
+    },
+  ],
+  [
+    util4,
+    {
+      width: 900,
+      height: 930,
+      footAnchorX: 452,
+    },
+  ],
+  [
+    util5,
+    {
+      width: 900,
+      height: 930,
+      footAnchorX: 452,
+    },
+  ],
+  [
+    util6,
+    {
+      width: 930,
+      height: 945,
+      footAnchorX: 472,
+    },
+  ],
+  [
     throwPose,
     {
       width: 1536,
@@ -193,17 +295,25 @@ const SPRITE_METRICS = new Map([
 
 const IDLE_FRAMES = [idle1, idle2]
 const RUN_FRAMES = [run1, run2, run3]
+const UTILITY_FRAMES = [util1, util2, util3, util4, util5, util6]
 const PLAYER_VISUAL_SCALE =
   PLAYER_VISUAL.idleHeight / PLAYER_VISUAL.referenceHeight
 
 const SPRITE_LAYOUTS = new Map(
   Array.from(SPRITE_METRICS.entries(), ([sprite, metrics]) => [
     sprite,
-    {
-      width: Number((metrics.width * PLAYER_VISUAL_SCALE).toFixed(2)),
-      height: Number((metrics.height * PLAYER_VISUAL_SCALE).toFixed(2)),
-      footAnchorX: Number((metrics.footAnchorX * PLAYER_VISUAL_SCALE).toFixed(2)),
-    },
+    (() => {
+      const scale =
+        metrics.visualHeight === undefined
+          ? PLAYER_VISUAL_SCALE
+          : metrics.visualHeight / metrics.height
+
+      return {
+        width: Number((metrics.width * scale).toFixed(2)),
+        height: Number((metrics.height * scale).toFixed(2)),
+        footAnchorX: Number((metrics.footAnchorX * scale).toFixed(2)),
+      }
+    })(),
   ]),
 )
 
@@ -229,12 +339,33 @@ function createInitialPlayer() {
     throwCooldown: 0,
     idleClock: 0,
     runClock: 0,
+    utilityAnimationClock: 0,
+    utilityTimer: 0,
+    utilityPhase: 'idle',
+    utilityCharges: UTILITY.maxCharges,
+    utilityRegenTimer: 0,
+    utilityGasLaunched: false,
+    invulnerable: false,
     hadInput: false,
+    crouching: false,
     sprite: idle1,
     deaths: 0,
     health: PLAYER.health,
     pizzaAmmo: PLAYER.pizzaAmmo,
     pizzaRegenTimer: 0,
+  }
+}
+
+function createEmptyKeys() {
+  return {
+    left: false,
+    right: false,
+    jumpQueued: false,
+    throwQueued: false,
+    throwHeld: false,
+    utilityQueued: false,
+    utilityHeld: false,
+    down: false,
   }
 }
 
@@ -253,6 +384,15 @@ function getSpriteLayout(sprite) {
 }
 
 function chooseSprite(player) {
+  if (player.utilityPhase === 'active' && !player.utilityGasLaunched) {
+    const utilityIndex = Math.min(
+      UTILITY_FRAMES.length - 1,
+      Math.floor(player.utilityAnimationClock / ANIMATION.utilityFrameTime),
+    )
+
+    return UTILITY_FRAMES[utilityIndex]
+  }
+
   if (player.throwTimer > 0) {
     return throwPose
   }
@@ -263,6 +403,10 @@ function chooseSprite(player) {
 
   if (player.brakeTimer > 0) {
     return brake
+  }
+
+  if (player.crouching) {
+    return crouch
   }
 
   if (Math.abs(player.vx) > PHYSICS.runThreshold) {
@@ -277,6 +421,14 @@ function chooseSprite(player) {
 }
 
 function describeAnimation(player) {
+  if (player.utilityPhase === 'flash') {
+    return 'Preparando util'
+  }
+
+  if (player.utilityPhase === 'active') {
+    return 'Util'
+  }
+
   if (player.throwTimer > 0) {
     return 'Lanzando'
   }
@@ -291,6 +443,10 @@ function describeAnimation(player) {
 
   if (player.brakeTimer > 0) {
     return 'Frenando'
+  }
+
+  if (player.crouching) {
+    return 'Agachado'
   }
 
   if (Math.abs(player.vx) > PHYSICS.runThreshold) {
@@ -313,8 +469,61 @@ function createPizza(player) {
     y: player.y + THROW.handOffsetY,
     vx: PIZZA.speed * direction,
     vy: -80,
+    damage: PIZZA.damage,
     direction,
     bounces: 0,
+    active: true,
+  }
+}
+
+function createGas(player) {
+  const direction = player.facing < 0 ? -1 : 1
+  const x =
+    direction > 0
+      ? player.x + PLAYER.width / 2 + GAS.mouthOffsetX
+      : player.x + PLAYER.width / 2 - GAS.mouthOffsetX - GAS.width
+
+  return {
+    id: crypto.randomUUID?.() ?? `${performance.now()}-${Math.random()}`,
+    type: 'gas',
+    image: vomitGas,
+    x,
+    y: player.y + GAS.mouthOffsetY,
+    vx: GAS.speed * direction,
+    vy: 0,
+    width: GAS.width,
+    height: GAS.height,
+    hitboxWidth: GAS.hitboxWidth,
+    hitboxHeight: GAS.hitboxHeight,
+    damage: GAS.damage,
+    direction,
+    lifetime: GAS.lifetime,
+    active: true,
+  }
+}
+
+function createBottle(player) {
+  const direction = player.facing < 0 ? -1 : 1
+  const x =
+    direction > 0
+      ? player.x + PLAYER.width / 2 + BOTTLE.handOffsetX
+      : player.x + PLAYER.width / 2 - BOTTLE.handOffsetX - BOTTLE.width
+
+  return {
+    id: crypto.randomUUID?.() ?? `${performance.now()}-${Math.random()}`,
+    type: 'bottle',
+    image: bottleIcon,
+    x,
+    y: player.y + BOTTLE.handOffsetY,
+    vx: BOTTLE.speed * direction,
+    vy: -110,
+    width: BOTTLE.width,
+    height: BOTTLE.height,
+    hitboxWidth: BOTTLE.hitboxWidth,
+    hitboxHeight: BOTTLE.hitboxHeight,
+    damage: BOTTLE.damage,
+    direction,
+    lifetime: 3,
     active: true,
   }
 }
@@ -325,6 +534,15 @@ function getPizzaHitbox(pizza) {
     y: pizza.y + (PIZZA.height - PIZZA.hitboxHeight) / 2,
     width: PIZZA.hitboxWidth,
     height: PIZZA.hitboxHeight,
+  }
+}
+
+function getUtilityProjectileHitbox(projectile) {
+  return {
+    x: projectile.x + (projectile.width - projectile.hitboxWidth) / 2,
+    y: projectile.y + (projectile.height - projectile.hitboxHeight) / 2,
+    width: projectile.hitboxWidth,
+    height: projectile.hitboxHeight,
   }
 }
 
@@ -369,15 +587,117 @@ function stepPizzas(pizzas, deltaTime) {
     .filter((pizza) => pizza.active)
 }
 
+function stepUtilityProjectiles(projectiles, deltaTime) {
+  const dt = Math.min(deltaTime, 1 / 30)
+
+  return projectiles
+    .map((projectile) => {
+      const nextProjectile = {
+        ...projectile,
+        x: projectile.x + projectile.vx * dt,
+        y: projectile.y + projectile.vy * dt,
+        lifetime: projectile.lifetime - dt,
+      }
+
+      if (nextProjectile.type === 'bottle') {
+        nextProjectile.vy += BOTTLE.gravity * dt
+      }
+
+      if (
+        nextProjectile.x + nextProjectile.width < 0 ||
+        nextProjectile.x > WORLD.width ||
+        nextProjectile.y > WORLD.killY ||
+        nextProjectile.lifetime <= 0
+      ) {
+        nextProjectile.active = false
+      }
+
+      return nextProjectile
+    })
+    .filter((projectile) => projectile.active)
+}
+
 function stepPlayer(player, keys, deltaTime) {
   const dt = Math.min(deltaTime, 1 / 30)
-  const input = (keys.right ? 1 : 0) - (keys.left ? 1 : 0)
+  const timerDt = Math.min(deltaTime, 0.5)
+  const utilityLocked =
+    player.utilityPhase === 'flash' ||
+    (player.utilityPhase === 'active' && !player.utilityGasLaunched)
+  const rawInput = (keys.right ? 1 : 0) - (keys.left ? 1 : 0)
+  const wantsCrouch = keys.down && player.onGround && !utilityLocked
+  const input = wantsCrouch || utilityLocked ? 0 : rawInput
   const thrownPizzas = []
+  const thrownUtilityProjectiles = []
   const wasOnGround = player.onGround
   const previousBottom = player.y + PLAYER.height
   const releasedMovement = player.hadInput && input === 0
 
-  if (keys.jumpQueued && player.onGround) {
+  if (
+    keys.utilityQueued &&
+    player.utilityPhase === 'idle' &&
+    player.utilityCharges > 0
+  ) {
+    player.utilityCharges -= 1
+    player.utilityPhase = 'flash'
+    player.utilityTimer = 0
+    player.utilityAnimationClock = 0
+    player.utilityGasLaunched = false
+    player.throwTimer = 0
+    player.throwCooldown = 0
+    player.brakeTimer = 0
+    player.vx = 0
+  }
+
+  keys.utilityQueued = false
+
+  if (player.utilityPhase === 'flash') {
+    player.utilityTimer += timerDt
+    player.vx = 0
+
+    if (player.utilityTimer >= UTILITY.flashDuration) {
+      player.utilityPhase = 'active'
+      player.utilityTimer = 0
+      player.utilityAnimationClock = 0
+      player.utilityGasLaunched = false
+    }
+  } else if (player.utilityPhase === 'active') {
+    player.utilityTimer += timerDt
+    player.utilityAnimationClock += timerDt
+
+    if (!player.utilityGasLaunched) {
+      player.vx = 0
+    }
+
+    if (
+      !player.utilityGasLaunched &&
+      player.utilityAnimationClock >= UTILITY.gasLaunchTime
+    ) {
+      player.utilityGasLaunched = true
+      thrownUtilityProjectiles.push(createGas(player))
+      player.utilityTimer = 0
+      player.brakeTimer = Math.max(player.brakeTimer, PHYSICS.brakeDuration)
+      player.throwTimer = 0
+      player.throwCooldown = 0
+    }
+
+    if (
+      player.utilityGasLaunched &&
+      player.utilityTimer >= UTILITY.postGasDuration
+    ) {
+      player.utilityPhase = 'idle'
+      player.utilityTimer = 0
+      player.utilityAnimationClock = 0
+      player.utilityGasLaunched = false
+      player.throwTimer = 0
+      player.throwCooldown = 0
+    }
+  }
+
+  player.invulnerable =
+    player.utilityPhase === 'flash' ||
+    (player.utilityPhase === 'active' && !player.utilityGasLaunched)
+
+  if (keys.jumpQueued && player.onGround && !wantsCrouch && !utilityLocked) {
     player.vy = -PHYSICS.jumpVelocity
     player.onGround = false
     player.brakeTimer = 0
@@ -390,7 +710,17 @@ function stepPlayer(player, keys, deltaTime) {
   if (
     keys.throwQueued &&
     player.throwCooldown <= 0 &&
-    player.pizzaAmmo > 0
+    player.utilityPhase === 'active' &&
+    player.utilityGasLaunched
+  ) {
+    player.throwTimer = THROW.duration
+    player.throwCooldown = UTILITY.bottleCooldown
+    thrownUtilityProjectiles.push(createBottle(player))
+  } else if (
+    keys.throwQueued &&
+    player.throwCooldown <= 0 &&
+    player.pizzaAmmo > 0 &&
+    !utilityLocked
   ) {
     player.pizzaAmmo -= 1
     player.throwTimer = THROW.duration
@@ -401,7 +731,11 @@ function stepPlayer(player, keys, deltaTime) {
 
   keys.throwQueued = false
 
-  if (releasedMovement && Math.abs(player.vx) > PHYSICS.brakeTriggerSpeed) {
+  if (
+    releasedMovement &&
+    Math.abs(player.vx) > PHYSICS.brakeTriggerSpeed &&
+    !utilityLocked
+  ) {
     player.brakeTimer = PHYSICS.brakeDuration
   }
 
@@ -445,6 +779,8 @@ function stepPlayer(player, keys, deltaTime) {
     player.onGround = false
   }
 
+  player.crouching = keys.down && player.onGround && !utilityLocked
+
   if (player.y > WORLD.killY) {
     const deaths = player.deaths + 1
     Object.assign(player, createInitialPlayer(), {
@@ -461,12 +797,12 @@ function stepPlayer(player, keys, deltaTime) {
     player.runClock = 0
   }
 
-  player.brakeTimer = Math.max(0, player.brakeTimer - dt)
-  player.throwTimer = Math.max(0, player.throwTimer - dt)
-  player.throwCooldown = Math.max(0, player.throwCooldown - dt)
+  player.brakeTimer = Math.max(0, player.brakeTimer - timerDt)
+  player.throwTimer = Math.max(0, player.throwTimer - timerDt)
+  player.throwCooldown = Math.max(0, player.throwCooldown - timerDt)
 
   if (player.pizzaAmmo < PLAYER.pizzaAmmo) {
-    player.pizzaRegenTimer += dt
+    player.pizzaRegenTimer += timerDt
 
     while (
       player.pizzaRegenTimer >= PIZZA.regenTime &&
@@ -479,7 +815,21 @@ function stepPlayer(player, keys, deltaTime) {
     player.pizzaRegenTimer = 0
   }
 
-  player.hadInput = input !== 0
+  if (player.utilityCharges < UTILITY.maxCharges) {
+    player.utilityRegenTimer += timerDt
+
+    while (
+      player.utilityRegenTimer >= UTILITY.chargeRegenTime &&
+      player.utilityCharges < UTILITY.maxCharges
+    ) {
+      player.utilityCharges += 1
+      player.utilityRegenTimer -= UTILITY.chargeRegenTime
+    }
+  } else {
+    player.utilityRegenTimer = 0
+  }
+
+  player.hadInput = rawInput !== 0
   player.sprite = chooseSprite(player)
 
   return {
@@ -493,7 +843,12 @@ function stepPlayer(player, keys, deltaTime) {
     deaths: player.deaths,
     health: player.health,
     pizzaAmmo: player.pizzaAmmo,
+    utilityCharges: player.utilityCharges,
+    utilityPhase: player.utilityPhase,
+    utilityTimer: player.utilityTimer,
+    invulnerable: player.invulnerable,
     thrownPizzas,
+    thrownUtilityProjectiles,
   }
 }
 
@@ -509,6 +864,10 @@ function toSceneState(player) {
     deaths: player.deaths,
     health: player.health,
     pizzaAmmo: player.pizzaAmmo,
+    utilityCharges: player.utilityCharges,
+    utilityPhase: player.utilityPhase,
+    utilityTimer: player.utilityTimer,
+    invulnerable: player.invulnerable,
   }
 }
 
@@ -525,13 +884,8 @@ function getCamera(player) {
 export function GameScene() {
   const viewportRef = useRef(null)
   const initialPlayer = createInitialPlayer()
-  const keysRef = useRef({
-    left: false,
-    right: false,
-    jumpQueued: false,
-    throwQueued: false,
-    throwHeld: false,
-  })
+  const keysRef = useRef(createEmptyKeys())
+  const isPausedRef = useRef(false)
 
   const playerRef = useRef(initialPlayer)
   const [sceneFit, setSceneFit] = useState({
@@ -540,6 +894,11 @@ export function GameScene() {
   })
   const [sceneState, setSceneState] = useState(() => toSceneState(initialPlayer))
   const [pizzas, setPizzas] = useState([])
+  const [utilityProjectiles, setUtilityProjectiles] = useState([])
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [activeMenuPanel, setActiveMenuPanel] = useState('main')
+  const [showHitboxes, setShowHitboxes] = useState(true)
+  const [reducedMenuMotion, setReducedMenuMotion] = useState(false)
   const currentSpriteLayout = getSpriteLayout(sceneState.sprite)
   const currentFootAnchorX =
     sceneState.facing < 0
@@ -547,12 +906,59 @@ export function GameScene() {
       : currentSpriteLayout.footAnchorX
   const playerFootX = sceneState.x + PLAYER.width / 2
   const playerFootY = sceneState.y + PLAYER.height
+  const visualHitboxTop = Math.max(
+    sceneState.y,
+    playerFootY - currentSpriteLayout.height + PLAYER_VISUAL.groundSink,
+  )
+  const visualHitboxHeight = playerFootY - visualHitboxTop
   const camera = getCamera(sceneState)
+  const utilityIsFlashing = sceneState.utilityPhase === 'flash'
+  const utilityIsActive = sceneState.utilityPhase === 'active'
+
+  const openMenu = () => {
+    keysRef.current = createEmptyKeys()
+    setActiveMenuPanel('main')
+    setIsMenuOpen(true)
+  }
+
+  const closeMenu = () => {
+    keysRef.current = createEmptyKeys()
+    setIsMenuOpen(false)
+  }
+
+  const resetGame = () => {
+    const nextPlayer = createInitialPlayer()
+    keysRef.current = createEmptyKeys()
+    playerRef.current = nextPlayer
+    setSceneState(toSceneState(nextPlayer))
+    setPizzas([])
+    setUtilityProjectiles([])
+    setActiveMenuPanel('main')
+    setIsMenuOpen(false)
+  }
+
+  useEffect(() => {
+    isPausedRef.current = isMenuOpen
+  }, [isMenuOpen])
 
   useEffect(() => {
     const onKeyChange = (pressed) => (event) => {
       const key = typeof event.key === 'string' ? event.key.toLowerCase() : ''
       const code = event.code
+
+      if (pressed && (event.key === 'Escape' || code === 'Escape')) {
+        event.preventDefault()
+        if (isPausedRef.current) {
+          closeMenu()
+        } else {
+          openMenu()
+        }
+        return
+      }
+
+      if (isPausedRef.current) {
+        return
+      }
 
       if (key === 'p' || code === 'KeyP') {
         event.preventDefault()
@@ -562,6 +968,17 @@ export function GameScene() {
         }
 
         keysRef.current.throwHeld = pressed
+        return
+      }
+
+      if (key === 'g' || code === 'KeyG') {
+        event.preventDefault()
+
+        if (pressed && !keysRef.current.utilityHeld) {
+          keysRef.current.utilityQueued = true
+        }
+
+        keysRef.current.utilityHeld = pressed
         return
       }
 
@@ -599,6 +1016,16 @@ export function GameScene() {
         event.preventDefault()
         keysRef.current.jumpQueued = true
       }
+
+      if (
+        event.key === 'ArrowDown' ||
+        event.code === 'ArrowDown' ||
+        key === 's' ||
+        event.code === 'KeyS'
+      ) {
+        event.preventDefault()
+        keysRef.current.down = pressed
+      }
     }
 
     const handleKeyDown = onKeyChange(true)
@@ -620,6 +1047,12 @@ export function GameScene() {
       setSceneState(toSceneState(playerRef.current))
       setPizzas((currentPizzas) =>
         stepPizzas([...currentPizzas, ...playerStep.thrownPizzas], deltaTime),
+      )
+      setUtilityProjectiles((currentProjectiles) =>
+        stepUtilityProjectiles(
+          [...currentProjectiles, ...playerStep.thrownUtilityProjectiles],
+          deltaTime,
+        ),
       )
     })
   })
@@ -663,7 +1096,11 @@ export function GameScene() {
     const loop = (time) => {
       const deltaTime = (time - previousTime) / 1000
       previousTime = time
-      tick(deltaTime)
+
+      if (!isPausedRef.current) {
+        tick(deltaTime)
+      }
+
       animationFrame = window.requestAnimationFrame(loop)
     }
 
@@ -678,7 +1115,11 @@ export function GameScene() {
     <section className="game-card">
       <div
         ref={viewportRef}
-        className="game-scene"
+        className={`game-scene ${isMenuOpen ? 'menu-is-open' : ''} ${
+          reducedMenuMotion ? 'menu-motion-reduced' : ''
+        } ${utilityIsFlashing ? 'utility-flash-active' : ''} ${
+          utilityIsActive ? 'utility-is-active' : ''
+        }`}
       >
         <div
           className="game-world"
@@ -739,32 +1180,36 @@ export function GameScene() {
               </div>
             ))}
 
-            <div
-              className="player-hitbox"
-              aria-hidden="true"
-              style={{
-                left: `${sceneState.x}px`,
-                top: `${sceneState.y}px`,
-                width: `${PLAYER.width}px`,
-                height: `${PLAYER.height}px`,
-              }}
-            />
+            {showHitboxes ? (
+              <div
+                className="player-hitbox"
+                aria-hidden="true"
+                style={{
+                  left: `${sceneState.x}px`,
+                  top: `${visualHitboxTop}px`,
+                  width: `${PLAYER.width}px`,
+                  height: `${visualHitboxHeight}px`,
+                }}
+              />
+            ) : null}
 
             {pizzas.map((pizza) => {
               const hitbox = getPizzaHitbox(pizza)
 
               return (
                 <div key={pizza.id}>
-                  <div
-                    className="pizza-hitbox"
-                    aria-hidden="true"
-                    style={{
-                      left: `${hitbox.x}px`,
-                      top: `${hitbox.y}px`,
-                      width: `${hitbox.width}px`,
-                      height: `${hitbox.height}px`,
-                    }}
-                  />
+                  {showHitboxes ? (
+                    <div
+                      className="pizza-hitbox"
+                      aria-hidden="true"
+                      style={{
+                        left: `${hitbox.x}px`,
+                        top: `${hitbox.y}px`,
+                        width: `${hitbox.width}px`,
+                        height: `${hitbox.height}px`,
+                      }}
+                    />
+                  ) : null}
 
                   <div
                     className={`pizza-sprite ${
@@ -783,10 +1228,49 @@ export function GameScene() {
               )
             })}
 
+            {utilityProjectiles.map((projectile) => {
+              const hitbox = getUtilityProjectileHitbox(projectile)
+
+              return (
+                <div key={projectile.id}>
+                  {showHitboxes ? (
+                    <div
+                      className={`utility-hitbox utility-hitbox-${projectile.type}`}
+                      aria-hidden="true"
+                      style={{
+                        left: `${hitbox.x}px`,
+                        top: `${hitbox.y}px`,
+                        width: `${hitbox.width}px`,
+                        height: `${hitbox.height}px`,
+                      }}
+                    />
+                  ) : null}
+
+                  <div
+                    className={`utility-projectile utility-projectile-${projectile.type} ${
+                      projectile.direction < 0 ? 'face-left' : 'face-right'
+                    }`}
+                    style={{
+                      left: `${projectile.x}px`,
+                      top: `${projectile.y}px`,
+                      width: `${projectile.width}px`,
+                      height: `${projectile.height}px`,
+                    }}
+                  >
+                    <img
+                      src={projectile.image}
+                      alt=""
+                      draggable="false"
+                    />
+                  </div>
+                </div>
+              )
+            })}
+
             <div
               className={`player-sprite ${
                 sceneState.facing < 0 ? 'face-left' : 'face-right'
-              }`}
+              } ${utilityIsActive ? 'utility-aura' : ''}`}
               style={{
                 left: `${playerFootX - currentFootAnchorX}px`,
                 top: `${playerFootY - currentSpriteLayout.height + PLAYER_VISUAL.groundSink}px`,
@@ -797,6 +1281,17 @@ export function GameScene() {
               <img src={sceneState.sprite} alt="Mario" draggable="false" />
             </div>
           </div>
+
+          <button
+            className="game-menu-button"
+            type="button"
+            aria-label="Abrir menu del juego"
+            onClick={openMenu}
+          >
+            <span aria-hidden="true" />
+            <span aria-hidden="true" />
+            <span aria-hidden="true" />
+          </button>
 
           <div className="health-hud" aria-label={`Vida ${sceneState.health} de 5`}>
             <div className="heart-row">
@@ -825,6 +1320,116 @@ export function GameScene() {
                 />
               ))}
             </div>
+
+            <div
+              className="utility-charge-row"
+              aria-label={`Util ${sceneState.utilityCharges} de ${UTILITY.maxCharges}`}
+            >
+              {Array.from({ length: sceneState.utilityCharges }, (_, index) => (
+                <img
+                  key={index}
+                  className="utility-charge-full"
+                  src={bottleIcon}
+                  alt=""
+                  draggable="false"
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="utility-flash-screen" aria-hidden="true" />
+
+        <div
+          className="pause-overlay"
+          aria-hidden={!isMenuOpen}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              closeMenu()
+            }
+          }}
+        >
+          <div
+            className="pause-menu"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pause-menu-title"
+          >
+            <div className="pause-menu-header">
+              <p className="pause-kicker">Juego en pausa</p>
+              <h2 id="pause-menu-title">
+                {activeMenuPanel === 'controls'
+                  ? 'Movimientos'
+                  : activeMenuPanel === 'settings'
+                    ? 'Ajustes'
+                    : 'Mario en busca del dato perdido'}
+              </h2>
+            </div>
+
+            {activeMenuPanel === 'main' ? (
+              <div className="pause-menu-actions">
+                <button type="button" className="pause-primary" onClick={closeMenu}>
+                  Continuar
+                </button>
+                <button type="button" onClick={() => setActiveMenuPanel('controls')}>
+                  Como jugar
+                </button>
+                <button type="button" onClick={() => setActiveMenuPanel('settings')}>
+                  Ajustes
+                </button>
+                <button type="button" onClick={resetGame}>
+                  Reiniciar
+                </button>
+              </div>
+            ) : null}
+
+            {activeMenuPanel === 'controls' ? (
+              <div className="pause-panel">
+                <div className="control-list">
+                  <span>A / Flecha izquierda</span>
+                  <strong>Mover a la izquierda</strong>
+                  <span>D / Flecha derecha</span>
+                  <strong>Mover a la derecha</strong>
+                  <span>W / Espacio / Flecha arriba</span>
+                  <strong>Saltar</strong>
+                  <span>S / Flecha abajo</span>
+                  <strong>Agacharse</strong>
+                  <span>P</span>
+                  <strong>Lanzar pizza / botella en util</strong>
+                  <span>G</span>
+                  <strong>Activar la util</strong>
+                  <span>Escape</span>
+                  <strong>Pausar o volver al juego</strong>
+                </div>
+                <button type="button" onClick={() => setActiveMenuPanel('main')}>
+                  Volver
+                </button>
+              </div>
+            ) : null}
+
+            {activeMenuPanel === 'settings' ? (
+              <div className="pause-panel">
+                <label className="setting-row">
+                  <span>Mostrar hitboxes</span>
+                  <input
+                    type="checkbox"
+                    checked={showHitboxes}
+                    onChange={(event) => setShowHitboxes(event.target.checked)}
+                  />
+                </label>
+                <label className="setting-row">
+                  <span>Animacion suave del menu</span>
+                  <input
+                    type="checkbox"
+                    checked={!reducedMenuMotion}
+                    onChange={(event) => setReducedMenuMotion(!event.target.checked)}
+                  />
+                </label>
+                <button type="button" onClick={() => setActiveMenuPanel('main')}>
+                  Volver
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
