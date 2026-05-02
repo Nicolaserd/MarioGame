@@ -1,10 +1,16 @@
-import {
+﻿import {
   startTransition,
   useEffect,
   useEffectEvent,
   useRef,
   useState,
 } from 'react'
+import {
+  BOSS_STATES,
+  createBossAIState,
+  stunBoss,
+  useBossAI,
+} from '../hooks/useBossAI.js'
 import backLayer from '../../assets/Entorno/oficina/fondo.png'
 import midLayer from '../../assets/Entorno/oficina/fondo1.png'
 import floorTile from '../../assets/Entorno/oficina/piso.png'
@@ -27,6 +33,24 @@ import death2 from '../../assets/processed/morir2-crop.png'
 import death3 from '../../assets/processed/morir3-crop.png'
 import shield1 from '../../assets/processed/escudo1-crop.png'
 import shield2 from '../../assets/processed/escudo2-crop.png'
+import push1 from '../../assets/processed/empuje1-crop.png'
+import push2 from '../../assets/processed/empuje2-crop.png'
+import attacked from '../../assets/processed/atacado-crop.png'
+import enemyWalk1 from '../../assets/processed/docuemenemigo-caminar1-crop.png'
+import enemyWalk2 from '../../assets/processed/docuemenemigo-caminar2-crop.png'
+import enemyIdle2 from '../../assets/processed/docuemenemigo-idle2-crop.png'
+import enemyTalk1 from '../../assets/processed/docuemenemigo-hablar1-crop.png'
+import enemyTalk2 from '../../assets/processed/docuemenemigo-hablar2-crop.png'
+import enemyDeath1 from '../../assets/processed/docuemenemigo-muerte1-crop.png'
+import enemyDeath2 from '../../assets/processed/docuemenemigo-muerte2-crop.png'
+import enemyDeath3 from '../../assets/processed/docuemenemigo-muerte3-crop.png'
+import enemyDeath4 from '../../assets/processed/docuemenemigo-muerte4-crop.png'
+import enemyJump from '../../assets/processed/docuemenemigo-saltar-crop.png'
+import enemyCrouch from '../../assets/processed/docuemenemigo-agachar-crop.png'
+import enemyStunned from '../../assets/processed/docuemenemigo-stuneado-crop.png'
+import enemyBackJump from '../../assets/processed/docuemenemigo-atras-crop.png'
+import enemyThrow from '../../assets/processed/docuemenemigo-tirar-crop.png'
+import enemyBall from '../../assets/processed/docuemenemigo-bola-crop.png'
 import util1 from '../../assets/processed/util1-crop.png'
 import util2 from '../../assets/processed/util2-crop.png'
 import util3 from '../../assets/processed/util3-crop.png'
@@ -68,6 +92,44 @@ const PLAYER = {
   pizzaAmmo: 5,
 }
 
+const ENEMY = {
+  health: 100,
+  width: 350,
+  height: Math.round(PLAYER.height * 1.3),
+  hitboxWidth: 210,
+  hitboxHeight: Math.round(PLAYER.height * 1.3),
+  enterSpeed: 132,
+  spawnDistance: 840,
+  stopDistance: 560,
+  triggerDistance: 24,
+  walkFrameTime: 0.26,
+  talkFrameTime: 0.28,
+  talkStartDelay: 0.45,
+  talkCharsPerSecond: 24,
+  talkHoldAfterText: 2,
+  deathFrameTime: 1.4,
+  groundSink: 18,
+}
+
+const ENEMY_BALL = {
+  width: 58,
+  height: 58,
+  hitboxWidth: 54,
+  hitboxHeight: 54,
+  damage: 1,
+  speed: 520,
+  lifetime: 3.2,
+  launchOffsetX: 134,
+  launchOffsetY: 72,
+}
+
+const ENEMY_TALK_TEXT =
+  'Soy documento corrupto .doc, vengo como venganza por toda la caca puesta en mí'
+const ENEMY_CELEBRATION_TEXT = 'Soy el exploid supremo padre!'
+const MARIO_ENEMY_DEFEAT_TEXT =
+  'Ese documento no estaba bien formateado, hora de ir por unas pizzas'
+const MARIO_ENEMY_DEFEAT_SPEECH_TIME = 8
+
 const PLAYER_VISUAL = {
   idleHeight: 172,
   referenceHeight: 910,
@@ -86,6 +148,15 @@ const PHYSICS = {
   brakeTriggerSpeed: 110,
   runThreshold: 60,
   airStateThreshold: 45,
+}
+
+const PUSH = {
+  duration: 2,
+  slideDuration: 1.28,
+}
+
+const HURT = {
+  duration: 0.34,
 }
 
 const THROW = {
@@ -292,6 +363,30 @@ const SPRITE_METRICS = new Map([
     },
   ],
   [
+    push1,
+    {
+      width: 1134,
+      height: 667,
+      footAnchorX: 430,
+    },
+  ],
+  [
+    push2,
+    {
+      width: 1374,
+      height: 778,
+      footAnchorX: 1020,
+    },
+  ],
+  [
+    attacked,
+    {
+      width: 905,
+      height: 954,
+      footAnchorX: 452,
+    },
+  ],
+  [
     util1,
     {
       width: 900,
@@ -353,6 +448,17 @@ const IDLE_FRAMES = [idle1, idle2]
 const RUN_FRAMES = [run1, run2, run3]
 const UTILITY_FRAMES = [util1, util2, util3, util4, util5, util6]
 const DEATH_FRAMES = [death1, death2, death3]
+const ENEMY_WALK_FRAMES = [enemyWalk1, enemyWalk2]
+const ENEMY_TALK_FRAMES = [enemyTalk1, enemyTalk2]
+const ENEMY_DEATH_FRAMES = [enemyDeath1, enemyDeath2, enemyDeath3, enemyDeath4]
+const ENEMY_SPRITES = {
+  idle: enemyIdle2,
+  jump: enemyJump,
+  crouch: enemyCrouch,
+  stunned: enemyStunned,
+  backJump: enemyBackJump,
+  throw: enemyThrow,
+}
 const PLAYER_VISUAL_SCALE =
   PLAYER_VISUAL.idleHeight / PLAYER_VISUAL.referenceHeight
 
@@ -407,14 +513,92 @@ function createInitialPlayer() {
     shieldCooldown: 0,
     dying: false,
     deathTimer: 0,
+    deathX: SPAWN.x + PLAYER.width / 2,
     hadInput: false,
     crouching: false,
+    speechText: '',
+    speechTimer: 0,
+    pushTimer: 0,
+    pushStartX: SPAWN.x,
+    pushTargetX: SPAWN.x,
+    pushDirection: 1,
+    hurtTimer: 0,
     sprite: idle1,
     deaths: 0,
     health: PLAYER.health,
     pizzaAmmo: PLAYER.pizzaAmmo,
     pizzaRegenTimer: 0,
   }
+}
+
+function createInitialEnemy() {
+  return {
+    ...createBossAIState(),
+    active: false,
+    entered: false,
+    mode: 'waiting',
+    x: 0,
+    y: floorSurfaceY - ENEMY.height + ENEMY.groundSink,
+    vx: 0,
+    vy: 0,
+    onGround: true,
+    groundY: floorSurfaceY - ENEMY.height + ENEMY.groundSink,
+    minX: 0,
+    maxX: WORLD.width - ENEMY.width,
+    width: ENEMY.width,
+    height: ENEMY.height,
+    targetX: 0,
+    health: ENEMY.health,
+    walkClock: 0,
+    talkTimer: 0,
+    deathTimer: 0,
+    speechText: '',
+    justDefeated: false,
+    defeated: false,
+    facing: -1,
+    sprite: enemyIdle2,
+    celebrationTargetX: 0,
+    celebrationTalkTimer: 0,
+  }
+}
+
+function startEnemyCelebration(enemy, deathX) {
+  const targetX = clamp(
+    deathX,
+    ENEMY.width / 2,
+    WORLD.width - ENEMY.width / 2,
+  )
+
+  enemy.mode = 'celebrating_walk'
+  enemy.aiState = BOSS_STATES.IDLE
+  enemy.celebrationTargetX = targetX
+  enemy.celebrationTalkTimer = 0
+  enemy.speechText = ''
+  enemy.walkClock = 0
+  enemy.vx = 0
+  enemy.vy = 0
+  enemy.onGround = true
+  enemy.y = floorSurfaceY - ENEMY.height + ENEMY.groundSink
+  enemy.crouching = false
+  enemy.isThrowing = false
+  enemy.isStunned = false
+  enemy.isDodging = false
+  enemy.pendingShot = false
+  enemy.pendingPush = null
+  enemy.shotReleased = false
+  enemy.attackTimer = 0
+  enemy.dodgeTimer = 0
+  enemy.dodgeCooldown = 0
+  enemy.dodgeKind = null
+  enemy.retreatTimer = 0
+  enemy.stunTimer = 0
+  enemy.reactionTimer = 0
+  enemy.pendingDodge = null
+  enemy.driftDirection = 0
+  enemy.retreatSpeedOverride = 0
+  enemy.escapeTargetDistance = 0
+  enemy.thrownEnemyProjectiles = []
+  enemy.justDefeated = false
 }
 
 function createEmptyKeys() {
@@ -470,6 +654,14 @@ function chooseSprite(player) {
     return DEATH_FRAMES[getDeathFrameIndex(player.deathTimer)]
   }
 
+  if (player.pushTimer > 0) {
+    return player.pushTimer > PUSH.duration - PUSH.slideDuration ? push1 : push2
+  }
+
+  if (player.hurtTimer > 0) {
+    return attacked
+  }
+
   if (player.shieldTimer > 0) {
     return player.shieldTimer > SHIELD.duration - SHIELD.introDuration
       ? shield1
@@ -515,6 +707,14 @@ function chooseSprite(player) {
 function describeAnimation(player) {
   if (player.dying) {
     return 'Muriendo'
+  }
+
+  if (player.pushTimer > 0) {
+    return 'Empujado'
+  }
+
+  if (player.hurtTimer > 0) {
+    return 'Atacado'
   }
 
   if (player.shieldTimer > 0) {
@@ -628,6 +828,31 @@ function createBottle(player) {
   }
 }
 
+function createEnemyBall(enemy) {
+  const direction = enemy.facing < 0 ? -1 : 1
+  const x =
+    direction > 0
+      ? enemy.x + ENEMY.width / 2 + ENEMY_BALL.launchOffsetX
+      : enemy.x + ENEMY.width / 2 - ENEMY_BALL.launchOffsetX - ENEMY_BALL.width
+
+  return {
+    id: crypto.randomUUID?.() ?? `${performance.now()}-${Math.random()}`,
+    image: enemyBall,
+    x,
+    y: enemy.y + ENEMY_BALL.launchOffsetY,
+    vx: ENEMY_BALL.speed * direction,
+    vy: 0,
+    width: ENEMY_BALL.width,
+    height: ENEMY_BALL.height,
+    hitboxWidth: ENEMY_BALL.hitboxWidth,
+    hitboxHeight: ENEMY_BALL.hitboxHeight,
+    damage: ENEMY_BALL.damage,
+    direction,
+    lifetime: ENEMY_BALL.lifetime,
+    active: true,
+  }
+}
+
 function getPizzaHitbox(pizza) {
   return {
     x: pizza.x + (PIZZA.width - PIZZA.hitboxWidth) / 2,
@@ -643,6 +868,194 @@ function getUtilityProjectileHitbox(projectile) {
     y: projectile.y + (projectile.height - projectile.hitboxHeight) / 2,
     width: projectile.hitboxWidth,
     height: projectile.hitboxHeight,
+  }
+}
+
+function getEnemyProjectileHitbox(projectile) {
+  return {
+    x: projectile.x + (projectile.width - projectile.hitboxWidth) / 2,
+    y: projectile.y + (projectile.height - projectile.hitboxHeight) / 2,
+    width: projectile.hitboxWidth,
+    height: projectile.hitboxHeight,
+  }
+}
+
+function getEnemyHitbox(enemy) {
+  const hitboxHeight =
+    enemy.crouching || enemy.mode === BOSS_STATES.DODGE
+      ? ENEMY.hitboxHeight * 0.5
+      : ENEMY.hitboxHeight
+
+  return {
+    x: enemy.x + (ENEMY.width - ENEMY.hitboxWidth) / 2,
+    y: enemy.y + ENEMY.height - hitboxHeight,
+    width: ENEMY.hitboxWidth,
+    height: hitboxHeight,
+  }
+}
+
+function getPlayerHitbox(player) {
+  const layout = getSpriteLayout(player.sprite)
+  const footY = player.y + PLAYER.height
+  const top = Math.max(
+    player.y,
+    footY - layout.height + PLAYER_VISUAL.groundSink,
+  )
+
+  return {
+    x: player.x,
+    y: top,
+    width: PLAYER.width,
+    height: footY - top,
+  }
+}
+
+function intersects(rectA, rectB) {
+  return (
+    rectA.x < rectB.x + rectB.width &&
+    rectA.x + rectA.width > rectB.x &&
+    rectA.y < rectB.y + rectB.height &&
+    rectA.y + rectA.height > rectB.y
+  )
+}
+
+function resolvePlayerEnemyCollision(player, enemy) {
+  if (
+    !enemy.active ||
+    enemy.mode === 'dying' ||
+    enemy.mode === 'dead' ||
+    enemy.mode === 'celebrating_walk' ||
+    enemy.mode === 'celebrating_talk' ||
+    player.dying
+  ) {
+    return
+  }
+
+  const playerHitbox = getPlayerHitbox(player)
+  const enemyHitbox = getEnemyHitbox(enemy)
+
+  if (!intersects(playerHitbox, enemyHitbox)) {
+    return
+  }
+
+  const playerCenterX = playerHitbox.x + playerHitbox.width / 2
+  const enemyCenterX = enemyHitbox.x + enemyHitbox.width / 2
+
+  if (playerCenterX <= enemyCenterX) {
+    player.x = enemyHitbox.x - playerHitbox.width
+  } else {
+    player.x = enemyHitbox.x + enemyHitbox.width
+  }
+
+  player.x = clamp(player.x, 0, WORLD.width - PLAYER.width)
+  player.vx = 0
+}
+
+function applyBossPushToPlayer(player, push, enemy) {
+  if (!push || player.dying) {
+    return
+  }
+
+  const direction = push.direction || 1
+  const nudge = push.nudge ?? 0
+  const targetDistance = push.targetDistance ?? 0
+
+  player.crouching = false
+  player.brakeTimer = 0
+  player.throwTimer = 0
+  player.shieldTimer = 0
+  player.pushTimer = PUSH.duration
+  player.pushDirection = direction
+  player.pushStartX = player.x
+  player.facing = direction
+
+  if (enemy && targetDistance > 0) {
+    const enemyHitbox = getEnemyHitbox(enemy)
+    const enemyCenterX = enemyHitbox.x + enemyHitbox.width / 2
+    const playerCenterX = player.x + PLAYER.width / 2
+    const targetCenterX = enemyCenterX + direction * targetDistance
+    const nudgedCenterX = playerCenterX + direction * nudge
+    const nextCenterX =
+      direction > 0
+        ? Math.max(nudgedCenterX, targetCenterX)
+        : Math.min(nudgedCenterX, targetCenterX)
+
+    player.pushTargetX = clamp(
+      nextCenterX - PLAYER.width / 2,
+      0,
+      WORLD.width - PLAYER.width,
+    )
+  } else if (nudge > 0) {
+    player.pushTargetX = clamp(
+      player.x + direction * nudge,
+      0,
+      WORLD.width - PLAYER.width,
+    )
+  } else {
+    player.pushTargetX = player.x
+  }
+
+  player.vx =
+    (direction * Math.abs(player.pushTargetX - player.pushStartX)) /
+    PUSH.slideDuration
+  player.vy = 0
+  player.y = floorSurfaceY - PLAYER.height
+  player.onGround = true
+  player.sprite = push1
+}
+
+function isEnemyVulnerable(enemy) {
+  return (
+    enemy.active &&
+    enemy.entered &&
+    !['walking', 'talking', 'celebrating_walk', 'celebrating_talk', 'dying', 'dead'].includes(
+      enemy.mode,
+    )
+  )
+}
+
+function applyEnemyProjectileHits(enemy, pizzas, utilityProjectiles) {
+  if (!isEnemyVulnerable(enemy) || enemy.health <= 0) {
+    return {
+      enemy,
+      pizzas,
+      utilityProjectiles,
+    }
+  }
+
+  const nextEnemy = { ...enemy }
+  const enemyHitbox = getEnemyHitbox(nextEnemy)
+  const nextPizzas = pizzas.filter((pizza) => {
+    if (intersects(getPizzaHitbox(pizza), enemyHitbox)) {
+      nextEnemy.health = Math.max(0, nextEnemy.health - pizza.damage)
+      return false
+    }
+
+    return true
+  })
+  const nextUtilityProjectiles = utilityProjectiles.filter((projectile) => {
+    if (intersects(getUtilityProjectileHitbox(projectile), enemyHitbox)) {
+      nextEnemy.health = Math.max(0, nextEnemy.health - projectile.damage)
+      if (projectile.type === 'gas' && nextEnemy.health > 0) {
+        stunBoss(nextEnemy)
+      }
+      return false
+    }
+
+    return true
+  })
+
+  if (nextEnemy.health <= 0) {
+    nextEnemy.mode = 'dying'
+    nextEnemy.deathTimer = 0
+    nextEnemy.speechText = ''
+    nextEnemy.sprite = ENEMY_DEATH_FRAMES[0]
+  }
+
+  return {
+    enemy: nextEnemy,
+    pizzas: nextPizzas,
+    utilityProjectiles: nextUtilityProjectiles,
   }
 }
 
@@ -717,9 +1130,280 @@ function stepUtilityProjectiles(projectiles, deltaTime) {
     .filter((projectile) => projectile.active)
 }
 
+function stepEnemyProjectiles(projectiles, deltaTime) {
+  const dt = Math.min(deltaTime, 1 / 30)
+
+  return projectiles
+    .map((projectile) => ({
+      ...projectile,
+      x: projectile.x + projectile.vx * dt,
+      y: projectile.y + projectile.vy * dt,
+      lifetime: projectile.lifetime - dt,
+    }))
+    .filter(
+      (projectile) =>
+        projectile.active &&
+        projectile.x + projectile.width >= 0 &&
+        projectile.x <= WORLD.width &&
+        projectile.y <= WORLD.killY &&
+        projectile.lifetime > 0,
+    )
+}
+
+function applyEnemyProjectilesToPlayer(player, projectiles) {
+  if (player.dying || player.health <= 0) {
+    return projectiles
+  }
+
+  const playerHitbox = getPlayerHitbox(player)
+
+  return projectiles.filter((projectile) => {
+    if (!intersects(getEnemyProjectileHitbox(projectile), playerHitbox)) {
+      return true
+    }
+
+    if (!player.invulnerable) {
+      player.health = Math.max(0, player.health - projectile.damage)
+      triggerPlayerHurt(player)
+    }
+
+    return false
+  })
+}
+
+function toBossThreatProjectiles(pizzas, utilityProjectiles) {
+  return [
+    ...pizzas.map((pizza) => ({
+      ...getPizzaHitbox(pizza),
+      vx: pizza.vx,
+      vy: pizza.vy,
+      active: pizza.active,
+    })),
+    ...utilityProjectiles.map((projectile) => ({
+      ...getUtilityProjectileHitbox(projectile),
+      vx: projectile.vx,
+      vy: projectile.vy,
+      active: projectile.active,
+    })),
+  ]
+}
+
+function chooseEnemyCombatSprite(enemy) {
+  if (enemy.mode === BOSS_STATES.THROW_ATTACK || enemy.isThrowing) {
+    return ENEMY_SPRITES.throw
+  }
+
+  if (enemy.mode === BOSS_STATES.STUNNED || enemy.isStunned) {
+    return ENEMY_SPRITES.stunned
+  }
+
+  if (enemy.crouching) {
+    return ENEMY_SPRITES.crouch
+  }
+
+  if (!enemy.onGround || enemy.mode === BOSS_STATES.AIRBORNE) {
+    return enemy.dodgeKind === 'back' ? ENEMY_SPRITES.backJump : ENEMY_SPRITES.jump
+  }
+
+  if (enemy.mode === BOSS_STATES.RETREAT && enemy.dodgeKind === 'back') {
+    return ENEMY_SPRITES.backJump
+  }
+
+  if (Math.abs(enemy.vx) > 16) {
+    const frameIndex =
+      Math.floor(enemy.walkClock / ENEMY.walkFrameTime) % ENEMY_WALK_FRAMES.length
+    return ENEMY_WALK_FRAMES[frameIndex]
+  }
+
+  return ENEMY_SPRITES.idle
+}
+
+function stepEnemy(enemy, player, deltaTime, playerProjectiles, updateBossAI) {
+  const dt = Math.min(deltaTime, 1 / 30)
+  const movedFromSpawn = Math.abs(player.x - SPAWN.x) > ENEMY.triggerDistance
+  enemy.justDefeated = false
+  enemy.thrownEnemyProjectiles = []
+
+  if (!enemy.active && !enemy.entered && !enemy.defeated && movedFromSpawn) {
+    enemy.active = true
+    enemy.mode = 'walking'
+    enemy.x = Math.min(player.x + ENEMY.spawnDistance, WORLD.width - ENEMY.width)
+    enemy.targetX = Math.min(player.x + ENEMY.stopDistance, WORLD.width - ENEMY.width)
+    enemy.y = floorSurfaceY - ENEMY.height
+    enemy.y += ENEMY.groundSink
+    enemy.walkClock = 0
+    enemy.talkTimer = 0
+    enemy.deathTimer = 0
+    enemy.speechText = ''
+    enemy.sprite = enemyWalk1
+  }
+
+  if (!enemy.active) {
+    return { ...enemy }
+  }
+
+  if (enemy.mode === 'dying') {
+    enemy.deathTimer += dt
+
+    const frameIndex = Math.min(
+      ENEMY_DEATH_FRAMES.length - 1,
+      Math.floor(enemy.deathTimer / ENEMY.deathFrameTime),
+    )
+    enemy.sprite = ENEMY_DEATH_FRAMES[frameIndex]
+    enemy.speechText = ''
+
+    if (enemy.deathTimer >= ENEMY.deathFrameTime * ENEMY_DEATH_FRAMES.length) {
+      enemy.active = false
+      enemy.defeated = true
+      enemy.justDefeated = true
+      enemy.mode = 'dead'
+      enemy.sprite = ENEMY_DEATH_FRAMES[ENEMY_DEATH_FRAMES.length - 1]
+    }
+  } else if (enemy.mode === 'celebrating_walk') {
+    enemy.walkClock += dt
+    enemy.y = floorSurfaceY - ENEMY.height + ENEMY.groundSink
+    enemy.onGround = true
+
+    const enemyCenterX = enemy.x + ENEMY.width / 2
+    const distance = enemy.celebrationTargetX - enemyCenterX
+    const direction = distance >= 0 ? 1 : -1
+    const absDistance = Math.abs(distance)
+
+    enemy.facing = direction
+
+    if (absDistance <= 4) {
+      enemy.x = clamp(
+        enemy.celebrationTargetX - ENEMY.width / 2,
+        0,
+        WORLD.width - ENEMY.width,
+      )
+      enemy.vx = 0
+      enemy.mode = 'celebrating_talk'
+      enemy.celebrationTalkTimer = 0
+      enemy.speechText = ''
+      enemy.sprite = enemyIdle2
+    } else {
+      const moveDistance = Math.min(absDistance, ENEMY.enterSpeed * dt)
+      enemy.x = clamp(
+        enemy.x + direction * moveDistance,
+        0,
+        WORLD.width - ENEMY.width,
+      )
+      enemy.vx = direction * ENEMY.enterSpeed
+
+      const frameIndex =
+        Math.floor(enemy.walkClock / ENEMY.walkFrameTime) % ENEMY_WALK_FRAMES.length
+      enemy.sprite = ENEMY_WALK_FRAMES[frameIndex]
+    }
+  } else if (enemy.mode === 'celebrating_talk') {
+    enemy.celebrationTalkTimer += dt
+    enemy.y = floorSurfaceY - ENEMY.height + ENEMY.groundSink
+    enemy.onGround = true
+    enemy.vx = 0
+
+    const playerCenterX = player.x + PLAYER.width / 2
+    const enemyCenterX = enemy.x + ENEMY.width / 2
+    enemy.facing = playerCenterX < enemyCenterX ? -1 : 1
+
+    const talkingTime = Math.max(
+      0,
+      enemy.celebrationTalkTimer - ENEMY.talkStartDelay,
+    )
+    const textLength = Math.min(
+      ENEMY_CELEBRATION_TEXT.length,
+      Math.floor(talkingTime * ENEMY.talkCharsPerSecond),
+    )
+    const textDuration = ENEMY_CELEBRATION_TEXT.length / ENEMY.talkCharsPerSecond
+    enemy.speechText = ENEMY_CELEBRATION_TEXT.slice(0, textLength)
+
+    if (talkingTime > 0) {
+      const frameIndex =
+        Math.floor(talkingTime / ENEMY.talkFrameTime) % ENEMY_TALK_FRAMES.length
+      enemy.sprite = ENEMY_TALK_FRAMES[frameIndex]
+    } else {
+      enemy.sprite = enemyIdle2
+    }
+
+    if (talkingTime >= textDuration + ENEMY.talkHoldAfterText) {
+      enemy.aiState = BOSS_STATES.IDLE
+      enemy.mode = BOSS_STATES.IDLE
+      enemy.celebrationTalkTimer = 0
+      enemy.speechText = ''
+      enemy.sprite = enemyIdle2
+    }
+  } else if (!enemy.entered) {
+    enemy.x = Math.max(enemy.targetX, enemy.x - ENEMY.enterSpeed * dt)
+    enemy.walkClock += dt
+
+    const frameIndex =
+      Math.floor(enemy.walkClock / ENEMY.walkFrameTime) % ENEMY_WALK_FRAMES.length
+    enemy.sprite = ENEMY_WALK_FRAMES[frameIndex]
+
+    if (enemy.x <= enemy.targetX) {
+      enemy.entered = true
+      enemy.mode = 'talking'
+      enemy.walkClock = 0
+      enemy.talkTimer = 0
+      enemy.speechText = ''
+      enemy.sprite = enemyIdle2
+    }
+  } else if (enemy.mode === 'talking') {
+    enemy.talkTimer += dt
+
+    const talkingTime = Math.max(0, enemy.talkTimer - ENEMY.talkStartDelay)
+    const textLength = Math.min(
+      ENEMY_TALK_TEXT.length,
+      Math.floor(talkingTime * ENEMY.talkCharsPerSecond),
+    )
+    const textDuration = ENEMY_TALK_TEXT.length / ENEMY.talkCharsPerSecond
+    enemy.speechText = ENEMY_TALK_TEXT.slice(0, textLength)
+
+    if (talkingTime > 0) {
+      const frameIndex =
+        Math.floor(talkingTime / ENEMY.talkFrameTime) % ENEMY_TALK_FRAMES.length
+      enemy.sprite = ENEMY_TALK_FRAMES[frameIndex]
+    } else {
+      enemy.sprite = enemyIdle2
+    }
+
+    if (talkingTime >= textDuration + ENEMY.talkHoldAfterText) {
+      enemy.aiState = BOSS_STATES.IDLE
+      enemy.mode = BOSS_STATES.IDLE
+      enemy.talkTimer = 0
+      enemy.speechText = ''
+      enemy.sprite = enemyIdle2
+    }
+  } else {
+    enemy.speechText = ''
+    enemy.walkClock += dt
+    enemy.hitbox = getEnemyHitbox(enemy)
+    updateBossAI(
+      enemy,
+      {
+        x: player.x,
+        y: player.y,
+        width: PLAYER.width,
+        height: PLAYER.height,
+      },
+      playerProjectiles,
+      deltaTime,
+    )
+
+    if (enemy.pendingShot) {
+      enemy.thrownEnemyProjectiles.push(createEnemyBall(enemy))
+      enemy.pendingShot = false
+    }
+
+    enemy.sprite = chooseEnemyCombatSprite(enemy)
+  }
+
+  return { ...enemy }
+}
+
 function startDeath(player) {
   player.dying = true
   player.deathTimer = 0
+  player.deathX = player.x + PLAYER.width / 2
   player.vx = 0
   player.vy = 0
   player.onGround = true
@@ -733,6 +1417,138 @@ function startDeath(player) {
   player.invulnerable = false
   player.shieldTimer = 0
   player.crouching = false
+  player.pushTimer = 0
+  player.hurtTimer = 0
+}
+
+function triggerPlayerHurt(player) {
+  if (player.dying || player.invulnerable) {
+    return
+  }
+
+  player.hurtTimer = HURT.duration
+
+  if (player.pushTimer <= 0) {
+    player.sprite = attacked
+  }
+}
+
+function easeOutCubic(progress) {
+  return 1 - (1 - progress) ** 3
+}
+
+function tickPlayerRecoveryTimers(player, timerDt) {
+  player.throwCooldown = Math.max(0, player.throwCooldown - timerDt)
+  player.shieldTimer = Math.max(0, player.shieldTimer - timerDt)
+  player.shieldCooldown = Math.max(0, player.shieldCooldown - timerDt)
+  player.speechTimer = Math.max(0, player.speechTimer - timerDt)
+  player.hurtTimer = Math.max(0, player.hurtTimer - timerDt)
+
+  if (player.speechTimer <= 0) {
+    player.speechText = ''
+  }
+
+  if (player.pizzaAmmo < PLAYER.pizzaAmmo) {
+    player.pizzaRegenTimer += timerDt
+
+    while (
+      player.pizzaRegenTimer >= PIZZA.regenTime &&
+      player.pizzaAmmo < PLAYER.pizzaAmmo
+    ) {
+      player.pizzaAmmo += 1
+      player.pizzaRegenTimer -= PIZZA.regenTime
+    }
+  } else {
+    player.pizzaRegenTimer = 0
+  }
+
+  if (player.utilityCharges < UTILITY.maxCharges) {
+    player.utilityRegenTimer += timerDt
+
+    while (
+      player.utilityRegenTimer >= UTILITY.chargeRegenTime &&
+      player.utilityCharges < UTILITY.maxCharges
+    ) {
+      player.utilityCharges += 1
+      player.utilityRegenTimer -= UTILITY.chargeRegenTime
+    }
+  } else {
+    player.utilityRegenTimer = 0
+  }
+}
+
+function toPlayerStepResult(
+  player,
+  resetProjectiles,
+  thrownPizzas = [],
+  thrownUtilityProjectiles = [],
+) {
+  return {
+    x: player.x,
+    y: player.y,
+    sprite: player.sprite,
+    facing: player.facing,
+    onGround: player.onGround,
+    animation: describeAnimation(player),
+    speed: Math.round(Math.abs(player.vx)),
+    deaths: player.deaths,
+    health: player.health,
+    pizzaAmmo: player.pizzaAmmo,
+    utilityCharges: player.utilityCharges,
+    utilityPhase: player.utilityPhase,
+    utilityTimer: player.utilityTimer,
+    invulnerable: player.invulnerable,
+    shieldTimer: player.shieldTimer,
+    shieldCooldown: player.shieldCooldown,
+    dying: player.dying,
+    deathTimer: player.deathTimer,
+    speechText: player.speechText,
+    speechTimer: player.speechTimer,
+    resetProjectiles,
+    thrownPizzas,
+    thrownUtilityProjectiles,
+  }
+}
+
+function stepPushedPlayer(player, timerDt, resetProjectiles) {
+  const previousTimer = player.pushTimer
+  player.pushTimer = Math.max(0, player.pushTimer - timerDt)
+
+  const elapsed = PUSH.duration - player.pushTimer
+  const slideProgress = clamp(elapsed / PUSH.slideDuration, 0, 1)
+  const easedProgress = easeOutCubic(slideProgress)
+  const nextX =
+    player.pushStartX + (player.pushTargetX - player.pushStartX) * easedProgress
+
+  player.x = clamp(nextX, 0, WORLD.width - PLAYER.width)
+  player.y = floorSurfaceY - PLAYER.height
+  player.vy = 0
+  player.onGround = true
+  player.crouching = false
+  player.throwTimer = 0
+  player.brakeTimer = 0
+  player.hadInput = false
+  player.invulnerable =
+    player.utilityPhase === 'flash' ||
+    (player.utilityPhase === 'active' && !player.utilityGasLaunched)
+
+  if (player.pushTimer <= PUSH.duration - PUSH.slideDuration) {
+    player.vx = 0
+  }
+
+  if (player.pushTimer <= 0 && previousTimer > 0) {
+    player.x = clamp(player.pushTargetX, 0, WORLD.width - PLAYER.width)
+    player.vx = 0
+    player.pushStartX = player.x
+    player.pushTargetX = player.x
+    player.idleClock = 0
+    player.runClock = 0
+  }
+
+  tickPlayerRecoveryTimers(player, timerDt)
+  player.sprite = chooseSprite(player)
+
+  return toPlayerStepResult(player, resetProjectiles)
 }
 
 function stepPlayer(player, keys, deltaTime) {
@@ -762,11 +1578,13 @@ function stepPlayer(player, keys, deltaTime) {
 
     if (player.deathTimer >= getDeathDuration()) {
       const deaths = player.deaths + 1
+      const capturedDeathX = player.deathX
       Object.assign(player, createInitialPlayer(), {
         deaths,
         brakeTimer: PHYSICS.landingBrakeDuration,
       })
       respawnedAfterDeath.current = true
+      respawnedAfterDeath.deathX = capturedDeathX
     } else {
       player.sprite = chooseSprite(player)
 
@@ -794,6 +1612,21 @@ function stepPlayer(player, keys, deltaTime) {
         thrownUtilityProjectiles: [],
       }
     }
+  }
+
+  if (player.pushTimer > 0) {
+    keys.left = false
+    keys.right = false
+    keys.down = false
+    keys.jumpQueued = false
+    keys.throwQueued = false
+    keys.utilityQueued = false
+    keys.shieldQueued = false
+    return stepPushedPlayer(
+      player,
+      timerDt,
+      wasDying && respawnedAfterDeath.current,
+    )
   }
 
   if (
@@ -998,6 +1831,12 @@ function stepPlayer(player, keys, deltaTime) {
   player.throwCooldown = Math.max(0, player.throwCooldown - timerDt)
   player.shieldTimer = Math.max(0, player.shieldTimer - timerDt)
   player.shieldCooldown = Math.max(0, player.shieldCooldown - timerDt)
+  player.speechTimer = Math.max(0, player.speechTimer - timerDt)
+  player.hurtTimer = Math.max(0, player.hurtTimer - timerDt)
+
+  if (player.speechTimer <= 0) {
+    player.speechText = ''
+  }
 
   if (player.pizzaAmmo < PLAYER.pizzaAmmo) {
     player.pizzaRegenTimer += timerDt
@@ -1049,7 +1888,10 @@ function stepPlayer(player, keys, deltaTime) {
     shieldCooldown: player.shieldCooldown,
     dying: player.dying,
     deathTimer: player.deathTimer,
+    speechText: player.speechText,
+    speechTimer: player.speechTimer,
     resetProjectiles: wasDying && respawnedAfterDeath.current,
+    respawnDeathX: respawnedAfterDeath.current ? respawnedAfterDeath.deathX : null,
     thrownPizzas,
     thrownUtilityProjectiles,
   }
@@ -1075,6 +1917,8 @@ function toSceneState(player) {
     shieldCooldown: player.shieldCooldown,
     dying: player.dying,
     deathTimer: player.deathTimer,
+    speechText: player.speechText,
+    speechTimer: player.speechTimer,
   }
 }
 
@@ -1090,11 +1934,17 @@ function getCamera(player) {
 
 export function GameScene() {
   const viewportRef = useRef(null)
+  const bossAI = useBossAI()
   const initialPlayer = createInitialPlayer()
+  const initialEnemy = createInitialEnemy()
   const keysRef = useRef(createEmptyKeys())
   const isPausedRef = useRef(false)
 
   const playerRef = useRef(initialPlayer)
+  const enemyRef = useRef(initialEnemy)
+  const pizzasRef = useRef([])
+  const utilityProjectilesRef = useRef([])
+  const enemyProjectilesRef = useRef([])
   const [sceneFit, setSceneFit] = useState({
     scale: 1,
     alignLeft: false,
@@ -1102,13 +1952,19 @@ export function GameScene() {
   const [sceneState, setSceneState] = useState(() => toSceneState(initialPlayer))
   const [pizzas, setPizzas] = useState([])
   const [utilityProjectiles, setUtilityProjectiles] = useState([])
+  const [enemyProjectiles, setEnemyProjectiles] = useState([])
+  const [enemyState, setEnemyState] = useState(initialEnemy)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [activeMenuPanel, setActiveMenuPanel] = useState('main')
   const [showHitboxes, setShowHitboxes] = useState(true)
   const [reducedMenuMotion, setReducedMenuMotion] = useState(false)
   const currentSpriteLayout = getSpriteLayout(sceneState.sprite)
+  const currentSpriteFacesLeft = sceneState.sprite === push1
+  const currentSpriteShouldFlip = currentSpriteFacesLeft
+    ? sceneState.facing > 0
+    : sceneState.facing < 0
   const currentFootAnchorX =
-    sceneState.facing < 0
+    currentSpriteShouldFlip
       ? currentSpriteLayout.width - currentSpriteLayout.footAnchorX
       : currentSpriteLayout.footAnchorX
   const playerFootX = sceneState.x + PLAYER.width / 2
@@ -1119,6 +1975,7 @@ export function GameScene() {
   )
   const visualHitboxHeight = playerFootY - visualHitboxTop
   const camera = getCamera(sceneState)
+  const visibleHearts = Math.ceil(clamp(sceneState.health, 0, PLAYER.health))
   const utilityIsFlashing = sceneState.utilityPhase === 'flash'
   const utilityIsActive = sceneState.utilityPhase === 'active'
 
@@ -1135,11 +1992,18 @@ export function GameScene() {
 
   const resetGame = () => {
     const nextPlayer = createInitialPlayer()
+    const nextEnemy = createInitialEnemy()
     keysRef.current = createEmptyKeys()
     playerRef.current = nextPlayer
+    enemyRef.current = nextEnemy
+    pizzasRef.current = []
+    utilityProjectilesRef.current = []
+    enemyProjectilesRef.current = []
     setSceneState(toSceneState(nextPlayer))
     setPizzas([])
     setUtilityProjectiles([])
+    setEnemyProjectiles([])
+    setEnemyState(nextEnemy)
     setActiveMenuPanel('main')
     setIsMenuOpen(false)
   }
@@ -1266,22 +2130,94 @@ export function GameScene() {
 
   const tick = useEffectEvent((deltaTime) => {
     const playerStep = stepPlayer(playerRef.current, keysRef.current, deltaTime)
+    let nextPizzas = playerStep.resetProjectiles
+      ? []
+      : stepPizzas([...pizzasRef.current, ...playerStep.thrownPizzas], deltaTime)
+    let nextUtilityProjectiles = playerStep.resetProjectiles
+      ? []
+      : stepUtilityProjectiles(
+          [
+            ...utilityProjectilesRef.current,
+            ...playerStep.thrownUtilityProjectiles,
+          ],
+          deltaTime,
+        )
+    const currentEnemy = enemyRef.current
+    const enemyShouldCelebrate =
+      playerStep.resetProjectiles &&
+      currentEnemy.active &&
+      currentEnemy.entered &&
+      ![
+        'walking',
+        'talking',
+        'celebrating_walk',
+        'celebrating_talk',
+        'dying',
+        'dead',
+      ].includes(currentEnemy.mode)
+
+    if (enemyShouldCelebrate) {
+      startEnemyCelebration(
+        currentEnemy,
+        playerStep.respawnDeathX ?? currentEnemy.x + ENEMY.width / 2,
+      )
+    }
+
+    const shouldResetEnemy = playerStep.resetProjectiles && !enemyShouldCelebrate
+
+    let nextEnemy = shouldResetEnemy
+      ? createInitialEnemy()
+      : stepEnemy(
+          currentEnemy,
+          playerRef.current,
+          deltaTime,
+          toBossThreatProjectiles(nextPizzas, nextUtilityProjectiles),
+          bossAI.updateBossAI,
+        )
+    const hitResult = applyEnemyProjectileHits(
+      nextEnemy,
+      nextPizzas,
+      nextUtilityProjectiles,
+    )
+
+    nextEnemy = hitResult.enemy
+    nextPizzas = hitResult.pizzas
+    nextUtilityProjectiles = hitResult.utilityProjectiles
+    let nextEnemyProjectiles = playerStep.resetProjectiles
+      ? []
+      : stepEnemyProjectiles(
+          [
+            ...enemyProjectilesRef.current,
+            ...(nextEnemy.thrownEnemyProjectiles ?? []),
+          ],
+          deltaTime,
+        )
+
+    nextEnemyProjectiles = applyEnemyProjectilesToPlayer(
+      playerRef.current,
+      nextEnemyProjectiles,
+    )
+
+    resolvePlayerEnemyCollision(playerRef.current, nextEnemy)
+    applyBossPushToPlayer(playerRef.current, nextEnemy.pendingPush, nextEnemy)
+
+    if (nextEnemy.justDefeated) {
+      playerRef.current.speechText = MARIO_ENEMY_DEFEAT_TEXT
+      playerRef.current.speechTimer = MARIO_ENEMY_DEFEAT_SPEECH_TIME
+      nextEnemy.justDefeated = false
+    }
+
+    enemyRef.current = nextEnemy
+    pizzasRef.current = nextPizzas
+    utilityProjectilesRef.current = nextUtilityProjectiles
+    enemyProjectilesRef.current = nextEnemyProjectiles
 
     startTransition(() => {
       setSceneState(toSceneState(playerRef.current))
-      setPizzas((currentPizzas) =>
-        playerStep.resetProjectiles
-          ? []
-          : stepPizzas([...currentPizzas, ...playerStep.thrownPizzas], deltaTime),
-      )
-      setUtilityProjectiles((currentProjectiles) =>
-        playerStep.resetProjectiles
-          ? []
-          : stepUtilityProjectiles(
-              [...currentProjectiles, ...playerStep.thrownUtilityProjectiles],
-              deltaTime,
-            ),
-      )
+      setEnemyState(nextEnemy)
+      setPizzas(nextPizzas)
+      setUtilityProjectiles(nextUtilityProjectiles)
+      setEnemyProjectiles(nextEnemyProjectiles)
     })
   })
 
@@ -1495,9 +2431,106 @@ export function GameScene() {
               )
             })}
 
+            {enemyProjectiles.map((projectile) => {
+              const hitbox = getEnemyProjectileHitbox(projectile)
+
+              return (
+                <div key={projectile.id}>
+                  {showHitboxes ? (
+                    <div
+                      className="enemy-projectile-hitbox"
+                      aria-hidden="true"
+                      style={{
+                        left: `${hitbox.x}px`,
+                        top: `${hitbox.y}px`,
+                        width: `${hitbox.width}px`,
+                        height: `${hitbox.height}px`,
+                      }}
+                    />
+                  ) : null}
+
+                  <div
+                    className={`enemy-projectile ${
+                      projectile.direction < 0 ? 'face-left' : 'face-right'
+                    }`}
+                    style={{
+                      left: `${projectile.x}px`,
+                      top: `${projectile.y}px`,
+                      width: `${projectile.width}px`,
+                      height: `${projectile.height}px`,
+                    }}
+                  >
+                    <img src={projectile.image} alt="" draggable="false" />
+                  </div>
+                </div>
+              )
+            })}
+
+            {enemyState.active ? (
+              <div>
+                {showHitboxes ? (
+                  <div
+                    className="enemy-hitbox"
+                    aria-hidden="true"
+                    style={{
+                      left: `${getEnemyHitbox(enemyState).x}px`,
+                      top: `${getEnemyHitbox(enemyState).y}px`,
+                      width: `${getEnemyHitbox(enemyState).width}px`,
+                      height: `${getEnemyHitbox(enemyState).height}px`,
+                    }}
+                  />
+                ) : null}
+
+                {(enemyState.mode === 'talking' ||
+                  enemyState.mode === 'celebrating_talk') &&
+                enemyState.speechText ? (
+                  <div
+                    className="enemy-speech"
+                    aria-live="polite"
+                    style={{
+                      left: `${enemyState.x + ENEMY.width / 2}px`,
+                      top: `${enemyState.y - 112}px`,
+                    }}
+                  >
+                    {enemyState.speechText}
+                    <span aria-hidden="true" className="enemy-speech-caret">
+                      |
+                    </span>
+                  </div>
+                ) : null}
+
+                <div
+                  className={`enemy-sprite ${
+                    enemyState.facing < 0 ? 'face-left' : 'face-right'
+                  }`}
+                  style={{
+                    left: `${enemyState.x}px`,
+                    top: `${enemyState.y}px`,
+                    width: `${ENEMY.width}px`,
+                    height: `${ENEMY.height}px`,
+                  }}
+                >
+                  <img src={enemyState.sprite} alt="Enemigo documento" draggable="false" />
+                </div>
+              </div>
+            ) : null}
+
+            {sceneState.speechText ? (
+              <div
+                className="enemy-speech player-speech"
+                aria-live="polite"
+                style={{
+                  left: `${sceneState.x + PLAYER.width / 2}px`,
+                  top: `${playerFootY - currentSpriteLayout.height - 92}px`,
+                }}
+              >
+                {sceneState.speechText}
+              </div>
+            ) : null}
+
             <div
               className={`player-sprite ${
-                sceneState.facing < 0 ? 'face-left' : 'face-right'
+                currentSpriteShouldFlip ? 'face-left' : 'face-right'
               } ${utilityIsActive ? 'utility-aura' : ''}`}
               style={{
                 left: `${playerFootX - currentFootAnchorX}px`,
@@ -1510,6 +2543,23 @@ export function GameScene() {
             </div>
           </div>
 
+          {enemyState.active ? (
+            <div
+              className="enemy-health-hud"
+              aria-label={`Vida enemigo ${enemyState.health} de ${ENEMY.health}`}
+            >
+              <span>{enemyState.health}</span>
+              <div className="enemy-health-track">
+                <div
+                  className="enemy-health-fill"
+                  style={{
+                    width: `${(enemyState.health / ENEMY.health) * 100}%`,
+                  }}
+                />
+              </div>
+            </div>
+          ) : null}
+
           <button
             className="game-menu-button"
             type="button"
@@ -1521,12 +2571,12 @@ export function GameScene() {
             <span aria-hidden="true" />
           </button>
 
-          <div className="health-hud" aria-label={`Vida ${sceneState.health} de 5`}>
+          <div className="health-hud" aria-label={`Vida ${visibleHearts} de 5`}>
             <div className="heart-row">
               {Array.from({ length: PLAYER.health }, (_, index) => (
                 <img
                   key={index}
-                  className={index < sceneState.health ? 'heart-full' : 'heart-empty'}
+                  className={index < visibleHearts ? 'heart-full' : 'heart-empty'}
                   src={heartIcon}
                   alt=""
                   draggable="false"
@@ -1668,3 +2718,4 @@ export function GameScene() {
     </section>
   )
 }
+

@@ -54,9 +54,15 @@
 .player-sprite,
 .pizza-hitbox,
 .pizza-sprite,
+.enemy-hitbox,
+.enemy-sprite,
+.enemy-speech,
+.enemy-projectile-hitbox,
+.enemy-projectile,
 .utility-hitbox,
 .utility-projectile,
 .game-menu-button,
+.enemy-health-hud,
 .health-hud {
   position: absolute;
 }
@@ -174,6 +180,118 @@
 
 .pizza-sprite.face-left img {
   transform: scaleX(-1);
+}
+
+.enemy-hitbox {
+  z-index: 6;
+  border: 2px solid rgba(255, 69, 87, 0.88);
+  background: rgba(255, 60, 82, 0.1);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+    0 0 14px rgba(255, 60, 82, 0.34);
+  pointer-events: none;
+}
+
+.enemy-sprite {
+  z-index: 7;
+  display: grid;
+  place-items: end center;
+  overflow: hidden;
+  pointer-events: none;
+  filter:
+    drop-shadow(0 18px 20px rgba(3, 5, 8, 0.42))
+    drop-shadow(0 0 10px rgba(255, 255, 255, 0.12));
+}
+
+.enemy-sprite img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: contain;
+  object-position: center bottom;
+  user-select: none;
+}
+
+.enemy-sprite.face-left img {
+  transform: scaleX(-1);
+}
+
+.enemy-projectile-hitbox {
+  z-index: 9;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.14),
+    0 0 14px rgba(255, 255, 255, 0.32);
+  pointer-events: none;
+}
+
+.enemy-projectile {
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  filter:
+    drop-shadow(0 0 12px rgba(255, 245, 211, 0.46))
+    drop-shadow(0 7px 9px rgba(0, 0, 0, 0.34));
+}
+
+.enemy-projectile img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+}
+
+.enemy-projectile.face-right img {
+  transform: scaleX(-1);
+}
+
+.enemy-speech {
+  z-index: 11;
+  width: 360px;
+  min-height: 54px;
+  padding: 10px 14px;
+  transform: translateX(-50%);
+  border: 2px solid rgba(255, 228, 161, 0.88);
+  border-radius: 6px;
+  background: rgba(39, 25, 18, 0.92);
+  color: #fff4d1;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.32),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+.enemy-speech-caret {
+  display: inline-block;
+  margin-left: 2px;
+  color: #ffcf6c;
+  animation: speech-caret-blink 720ms steps(2, end) infinite;
+}
+
+.player-speech {
+  width: 390px;
+}
+
+@keyframes speech-caret-blink {
+  0%,
+  42% {
+    opacity: 1;
+  }
+
+  43%,
+  100% {
+    opacity: 0;
+  }
 }
 
 .utility-hitbox {
@@ -301,6 +419,42 @@
   z-index: 9;
 }
 
+.enemy-health-hud {
+  right: 34px;
+  top: 58px;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 162px;
+  padding: 5px 7px;
+  border: 1px solid rgba(255, 235, 208, 0.38);
+  border-radius: 8px;
+  color: #fff5e4;
+  background: rgba(42, 20, 15, 0.48);
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.enemy-health-track {
+  flex: 1;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(49, 9, 12, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.enemy-health-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff354f, #ffd166);
+  box-shadow: 0 0 10px rgba(255, 71, 87, 0.42);
+}
+
 .heart-row,
 .pizza-ammo-row,
 .utility-charge-row {
@@ -326,8 +480,9 @@
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.34));
 }
 
-.heart-empty {
-  opacity: 0.26;
+.heart-row img.heart-empty {
+  opacity: 0;
+  transform: scale(0.72);
   filter: grayscale(1) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.34));
 }
 
@@ -534,6 +689,12 @@
   .health-hud {
     left: 82px;
     top: 48px;
+  }
+
+  .enemy-health-hud {
+    right: 18px;
+    top: 48px;
+    min-width: 132px;
   }
 
   .game-menu-button {
