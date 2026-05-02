@@ -1222,12 +1222,8 @@ function stepEnemy(enemy, player, deltaTime, playerProjectiles, updateBossAI) {
       0,
       enemy.celebrationTalkTimer - ENEMY.talkStartDelay,
     )
-    const textLength = Math.min(
-      ENEMY_CELEBRATION_TEXT.length,
-      Math.floor(talkingTime * ENEMY.talkCharsPerSecond),
-    )
     const textDuration = ENEMY_CELEBRATION_TEXT.length / ENEMY.talkCharsPerSecond
-    enemy.speechText = ENEMY_CELEBRATION_TEXT.slice(0, textLength)
+    enemy.speechText = talkingTime > 0 ? ENEMY_CELEBRATION_TEXT : ''
 
     if (talkingTime > 0) {
       const frameIndex =
@@ -1265,12 +1261,8 @@ function stepEnemy(enemy, player, deltaTime, playerProjectiles, updateBossAI) {
     enemy.talkTimer += dt
 
     const talkingTime = Math.max(0, enemy.talkTimer - ENEMY.talkStartDelay)
-    const textLength = Math.min(
-      ENEMY_TALK_TEXT.length,
-      Math.floor(talkingTime * ENEMY.talkCharsPerSecond),
-    )
     const textDuration = ENEMY_TALK_TEXT.length / ENEMY.talkCharsPerSecond
-    enemy.speechText = ENEMY_TALK_TEXT.slice(0, textLength)
+    enemy.speechText = talkingTime > 0 ? ENEMY_TALK_TEXT : ''
 
     if (talkingTime > 0) {
       const frameIndex =
@@ -2288,6 +2280,7 @@ export function OfficeScene() {
                   x={enemyState.x + ENEMY.width / 2}
                   y={enemyState.y - 112}
                   showCaret
+                  charsPerSecond={ENEMY.talkCharsPerSecond}
                 />
 
                 <div
@@ -2311,6 +2304,7 @@ export function OfficeScene() {
               x={sceneState.x + PLAYER.width / 2}
               y={playerFootY - currentSpriteLayout.height - 92}
               className="player-speech"
+              charsPerSecond={ENEMY.talkCharsPerSecond}
             />
 
             <div

@@ -46,11 +46,12 @@ Validacion reciente:
 - `src/game/physics/collision.js`: utilidades generales `clamp` e `intersects`.
 - `src/game/ui/GameHud.jsx`: HUD reusable.
 - `src/game/ui/PauseMenu.jsx`: menu de pausa reusable.
-- `src/game/ui/SpeechBubble.jsx`: viñeta reutilizable de conversacion con caret opcional.
+- `src/game/ui/SpeechBubble.jsx`: viñeta reutilizable de conversacion con caret opcional y efecto maquina de escribir letra por letra.
 - `src/hooks/useBossAI.js`: FSM/IA del documento enemigo.
 - `src/App.css`: estilos de escena, sprites, HUD, hitboxes, menu, efectos de util y responsive.
 - `src/index.css`: reset global y fondo base.
-- `AGENT_HANDOFF.md`: unico documento raiz de referencia funcional y arquitectonica. El `README.md` viejo de plantilla Vite fue eliminado porque no se usaba.
+- `README.md`: resumen publico del proyecto, estado actual, comandos, controles, modularizacion y limpieza realizada.
+- `AGENT_HANDOFF.md`: documento raiz de referencia funcional y arquitectonica con reglas detalladas para programar cambios nuevos. El `README.md` viejo de plantilla Vite fue eliminado y reemplazado por un resumen real del proyecto.
 - Limpieza reciente: tambien se eliminaron artefactos no usados de plantilla/generados (`src/assets/*`, `public/favicon.svg`, `public/icons.svg`, `image/AGENT_HANDOFF/`, `output/playwright/`, `.playwright-cli/`, `.playwright-mcp/`). No recrearlos salvo que vuelvan a tener uso real.
 
 ## Constantes base del juego
@@ -103,6 +104,7 @@ Estas reglas se deben seguir si o si para cualquier cambio nuevo:
 - Toda escena nueva debe vivir en `src/game/scenes/<nombreEscena>/` con sus propios assets, constantes y componente principal.
 - Todo personaje nuevo debe tener carpeta propia en `src/game/characters/<nombrePersonaje>/` para assets, constantes y comportamiento propio.
 - Los componentes reutilizables de UI deben ir en `src/game/ui/`; no duplicar HUD, menu, viñetas o overlays dentro de una escena.
+- La animacion de texto letra por letra pertenece a `SpeechBubble`; las escenas deben pasar el texto completo y no recortarlo con `slice` para simular escritura.
 - Las configuraciones de proyectiles deben vivir en `src/game/projectiles/projectileTypes.js` o en modulos dentro de `src/game/projectiles/`; no hardcodear velocidades/dano/gravedad en JSX si se pueden declarar por tipo.
 - La escena coordina reglas de colision entre personajes/proyectiles, pero debe reutilizar utilidades generales de `src/game/physics/` cuando existan.
 - El loop debe seguir siendo generico mediante `useGameLoop`; cada escena pasa su propio `tick`.
@@ -270,7 +272,7 @@ Aparicion y fases:
 
 - Aparece cuando Mario se mueve mas de `ENEMY.triggerDistance = 24` desde el spawn.
 - Spawnea a la derecha usando `spawnDistance = 840` y camina hasta `stopDistance = 560`.
-- Entra en `talking` y muestra texto con efecto maquina de escribir.
+- Entra en `talking` y muestra el texto completo mediante `SpeechBubble`, que aplica el efecto maquina de escribir.
 - Mientras camina/habla/celebra/muere no es vulnerable.
 - Al terminar de hablar, entra a la FSM de combate.
 
