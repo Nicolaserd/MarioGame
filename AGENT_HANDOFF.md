@@ -49,6 +49,7 @@ Validacion reciente:
 - `src/game/ui/GameHud.jsx`: HUD reusable.
 - `src/game/ui/PauseMenu.jsx`: menu de pausa reusable.
 - `src/game/ui/SpeechBubble.jsx`: viñeta reutilizable de conversacion con caret opcional y efecto maquina de escribir letra por letra.
+- `src/game/ui/IntroVideoOverlay.jsx`: overlay reutilizable que reproduce un video de intro, con boton `Skip` en la esquina superior derecha y boton `Iniciar intro` cuando el navegador bloquea el autoplay con audio.
 - `src/hooks/useBossAI.js`: FSM/IA del documento enemigo.
 - `src/App.css`: estilos de escena, sprites, HUD, hitboxes, menu, efectos de util y responsive.
 - `src/index.css`: reset global y fondo base.
@@ -81,7 +82,7 @@ En `src/game/scenes/office/officeConstants.js` y `OfficeScene.jsx`:
 - `G`: activar la util si hay carga disponible.
 - `O`: activar escudo mientras se mantiene presionado.
 - `M`: forzar muerte de Mario.
-- `Escape`: abrir/cerrar menu de pausa.
+- `Escape`: abrir/cerrar menu de pausa. Si el video de intro esta abierto, `Escape` lo skipea en vez de abrir el menu.
 - Boton hamburguesa: abre el menu de pausa.
 
 El menu limpia `keysRef.current` al abrir/cerrar para evitar inputs pegados.
@@ -91,13 +92,14 @@ El menu limpia `keysRef.current` al abrir/cerrar para evitar inputs pegados.
 `OfficeScene` usa refs para el estado de alta frecuencia y estado React para pintar:
 
 - Refs runtime: `playerRef`, `enemyRef`, `keysRef`, `isPausedRef`, `pizzasRef`, `utilityProjectilesRef`, `enemyProjectilesRef`.
-- Estado visible React: `sceneState`, `enemyState`, `pizzas`, `utilityProjectiles`, `enemyProjectiles`, menu y ajustes.
+- Estado visible React: `sceneState`, `enemyState`, `pizzas`, `utilityProjectiles`, `enemyProjectiles`, menu, intro y ajustes.
+- `isIntroOpen` controla la visibilidad del intro; `isPausedRef.current = isMenuOpen || isIntroOpen` para que el loop quede pausado mientras el intro corre.
 - El esbirro doc usa `docMinionsRef`, `docMinions` y `docMinionSystemRef` para spawns activados por vida del boss.
 - Loop con `requestAnimationFrame` mediante `useGameLoop({ isPausedRef, onTick })`; cada escena puede pasar su propio `tick`.
 - Actualizaciones visuales dentro de `startTransition`.
 - Input por listeners globales `keydown`/`keyup` mediante `useGameInput`.
 
-`resetGame()` reinicia jugador, enemigo, proyectiles, teclas, menu y estados visibles.
+`resetGame()` reinicia jugador, enemigo, proyectiles, teclas, menu y estados visibles, y vuelve a setear `isIntroOpen = true` para mostrar el video de intro otra vez.
 
 ## Reglas obligatorias de modularizacion
 
@@ -325,6 +327,25 @@ Proyectiles del boss:
 - Lifetime `4.6` segundos.
 - Se guardan en `enemyProjectilesRef` y `enemyProjectiles`.
 
+## Intro video
+
+- Componente: `src/game/ui/IntroVideoOverlay.jsx` en `src/game/ui/` para mantenerlo reutilizable.
+- Asset: `assets/video/intro1.mp4`, exportado como `introVideo` en `src/game/scenes/office/officeAssets.js`.
+- Estado en `OfficeScene`: `isIntroOpen`, inicial `true`. El overlay aparece al cargar la pagina, al recargar y cada vez que `resetGame()` corre (incluyendo el `Reiniciar` del menu y el reset post muerte/celebracion del boss).
+- Mientras `isIntroOpen` es `true`:
+  - `isPausedRef.current` queda `true`, asi que `useGameLoop` no avanza el tick.
+  - Se aplica la clase `intro-is-open` al `.game-scene`, que reusa la regla de blur `filter: blur(5px) saturate(0.72) brightness(0.68)` de `.menu-is-open .game-world`.
+  - `openMenu()` queda bloqueado y `closeMenu()` (que es lo que `useGameInput` invoca con `Escape` cuando `isPausedRef.current` es `true`) skipea el intro en vez de cerrar el menu.
+- Skip:
+  - Boton `Skip »` fijo en la esquina superior derecha del overlay.
+  - `Escape` skipea (via el ruteo descrito arriba).
+  - `onEnded` del `<video>` tambien llama a `onSkip` para cerrar automaticamente al terminar.
+- Autoplay con audio:
+  - Se intenta `video.play()` con `muted = false`. Si el navegador resuelve la promesa, suena directamente.
+  - Si la promesa rechaza (politica de autoplay del navegador, tipico en primer load/reload), aparece un boton `Iniciar intro` centrado y se aplica la clase `is-waiting-for-start` al overlay; esa clase aplica `filter: blur(14px) brightness(0.45) saturate(0.7)` al `<video>` para no spoilear el primer frame.
+  - El click en `Iniciar intro` resetea `currentTime = 0`, `muted = false` y vuelve a llamar `play()`.
+- No usar `autoPlay` en el `<video>` ni el fallback `muted = true`: la idea es que el video siempre se reproduzca con audio, y si no se puede, esperar al click. El `<video>` se controla via ref desde el `useEffect` que escucha `isOpen`.
+
 ## HUD, menu y ajustes
 
 HUD:
@@ -360,6 +381,10 @@ Entorno:
 - `assets/Entorno/oficina/fondo.png`.
 - `assets/Entorno/oficina/fondo1.png`.
 - `assets/Entorno/oficina/piso.png`.
+
+Video:
+
+- `assets/video/intro1.mp4` (intro de la escena de oficina).
 
 HUD/proyectiles originales:
 
@@ -419,6 +444,7 @@ Existen mas assets originales/procesados en el repo (`fondo2`, `personas`, `bloq
 - `.utility-aura`: rayos alrededor de Mario durante util activa.
 - `.health-hud`, `.enemy-health-hud`: HUD.
 - `.pause-overlay`, `.pause-menu`: menu de pausa.
+- `.intro-overlay`, `.intro-video`, `.intro-skip-button`, `.intro-start-button`: overlay del video de intro. La clase `.intro-overlay.is-waiting-for-start` aplica blur fuerte al `<video>` mientras se espera el click de `Iniciar intro`. La clase `.intro-is-open` en `.game-scene` reusa el mismo blur que `.menu-is-open` sobre `.game-world`.
 
 ## Zonas delicadas para futuros cambios
 
@@ -453,6 +479,12 @@ Si se toca menu/HUD:
 
 - Revisar `GameHud.jsx`, `PauseMenu.jsx`, `SpeechBubble.jsx`, `openMenu`, `closeMenu`, `resetGame`, `isPausedRef`, `activeMenuPanel`, `showHitboxes`, `reducedMenuMotion`.
 - Probar teclado despues de cerrar menu.
+
+Si se toca el intro video:
+
+- Revisar `IntroVideoOverlay.jsx`, `isIntroOpen`, `skipIntro`, `closeMenu` (rutea `Escape` al skip), `openMenu` (queda bloqueado mientras el intro este abierto), `resetGame` (re-abre el intro), el `useEffect` que setea `isPausedRef.current = isMenuOpen || isIntroOpen` y la clase `intro-is-open` en `.game-scene`.
+- No volver a poner `autoPlay` en el `<video>` ni un fallback `muted = true`: rompe el requisito de que el video suene siempre con audio.
+- Probar primer load (autoplay bloqueado → boton `Iniciar intro` con video en blur), `Skip`, `Escape`, fin natural del video y reset desde el menu de pausa.
 
 ## Pendientes razonables
 

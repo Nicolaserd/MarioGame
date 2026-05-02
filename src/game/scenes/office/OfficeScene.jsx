@@ -88,9 +88,10 @@ import {
 } from '../../projectiles/projectileTypes.js'
 import { clamp, intersects } from '../../physics/collision.js'
 import { GameHud } from '../../ui/GameHud.jsx'
+import { IntroVideoOverlay } from '../../ui/IntroVideoOverlay.jsx'
 import { PauseMenu } from '../../ui/PauseMenu.jsx'
 import { SpeechBubble } from '../../ui/SpeechBubble.jsx'
-import { backLayer, floorTile, midLayer } from './officeAssets.js'
+import { backLayer, floorTile, introVideo, midLayer } from './officeAssets.js'
 import {
   FLOOR,
   FLOOR_SEGMENTS,
@@ -1999,6 +2000,7 @@ export function OfficeScene() {
   const [docMinions, setDocMinions] = useState([])
   const [enemyState, setEnemyState] = useState(initialEnemy)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isIntroOpen, setIsIntroOpen] = useState(true)
   const [activeMenuPanel, setActiveMenuPanel] = useState('main')
   const [showHitboxes, setShowHitboxes] = useState(true)
   const [reducedMenuMotion, setReducedMenuMotion] = useState(false)
@@ -2023,13 +2025,25 @@ export function OfficeScene() {
   const utilityIsFlashing = sceneState.utilityPhase === 'flash'
   const utilityIsActive = sceneState.utilityPhase === 'active'
 
+  const skipIntro = () => {
+    keysRef.current = createEmptyKeys()
+    setIsIntroOpen(false)
+  }
+
   const openMenu = () => {
+    if (isIntroOpen) {
+      return
+    }
     keysRef.current = createEmptyKeys()
     setActiveMenuPanel('main')
     setIsMenuOpen(true)
   }
 
   const closeMenu = () => {
+    if (isIntroOpen) {
+      skipIntro()
+      return
+    }
     keysRef.current = createEmptyKeys()
     setIsMenuOpen(false)
   }
@@ -2053,11 +2067,12 @@ export function OfficeScene() {
     setEnemyState(nextEnemy)
     setActiveMenuPanel('main')
     setIsMenuOpen(false)
+    setIsIntroOpen(true)
   }
 
   useEffect(() => {
-    isPausedRef.current = isMenuOpen
-  }, [isMenuOpen])
+    isPausedRef.current = isMenuOpen || isIntroOpen
+  }, [isMenuOpen, isIntroOpen])
 
   useGameInput({
     keysRef,
@@ -2234,10 +2249,10 @@ export function OfficeScene() {
       <div
         ref={viewportRef}
         className={`game-scene ${isMenuOpen ? 'menu-is-open' : ''} ${
-          reducedMenuMotion ? 'menu-motion-reduced' : ''
-        } ${utilityIsFlashing ? 'utility-flash-active' : ''} ${
-          utilityIsActive ? 'utility-is-active' : ''
-        }`}
+          isIntroOpen ? 'intro-is-open' : ''
+        } ${reducedMenuMotion ? 'menu-motion-reduced' : ''} ${
+          utilityIsFlashing ? 'utility-flash-active' : ''
+        } ${utilityIsActive ? 'utility-is-active' : ''}`}
       >
         <div
           className="game-world"
@@ -2556,6 +2571,12 @@ export function OfficeScene() {
           onSetPanel={setActiveMenuPanel}
           onSetShowHitboxes={setShowHitboxes}
           onSetReducedMotion={setReducedMenuMotion}
+        />
+
+        <IntroVideoOverlay
+          src={introVideo}
+          isOpen={isIntroOpen}
+          onSkip={skipIntro}
         />
       </div>
     </section>
