@@ -59,6 +59,8 @@
 .enemy-speech,
 .enemy-projectile-hitbox,
 .enemy-projectile,
+.doc-minion-hitbox,
+.doc-minion-sprite,
 .utility-hitbox,
 .utility-projectile,
 .game-menu-button,
@@ -246,6 +248,40 @@
 }
 
 .enemy-projectile.face-right img {
+  transform: scaleX(-1);
+}
+
+.doc-minion-hitbox {
+  z-index: 6;
+  border: 2px solid rgba(255, 164, 69, 0.88);
+  background: rgba(255, 153, 51, 0.12);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+    0 0 12px rgba(255, 145, 48, 0.34);
+  pointer-events: none;
+}
+
+.doc-minion-sprite {
+  z-index: 7;
+  display: grid;
+  place-items: end center;
+  overflow: hidden;
+  pointer-events: none;
+  transform-origin: center bottom;
+  filter:
+    drop-shadow(0 8px 9px rgba(3, 5, 8, 0.38))
+    drop-shadow(0 0 6px rgba(255, 234, 188, 0.14));
+}
+
+.doc-minion-sprite img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  user-select: none;
+}
+
+.doc-minion-sprite.face-left img {
   transform: scaleX(-1);
 }
 

@@ -7,7 +7,7 @@ Este README resume el estado del proyecto. Para reglas completas de arquitectura
 ## Estado Actual
 
 - Pantalla principal: escena jugable de oficina.
-- Personajes actuales: Mario y Documento Corrupto.
+- Personajes actuales: Mario, Documento Corrupto y Esbirro Doc.
 - Arquitectura modular bajo `src/game/`.
 - Loop de juego propio con `requestAnimationFrame`.
 - Input global reutilizable.
@@ -42,6 +42,7 @@ npm run preview
 - `src/game/scenes/office/officeAssets.js`: fondos y piso.
 - `src/game/characters/mario/`: assets y constantes de Mario.
 - `src/game/characters/corruptDocument/`: assets y constantes del Documento Corrupto.
+- `src/game/characters/docMinion/`: assets y constantes del Esbirro Doc.
 - `src/game/projectiles/projectileTypes.js`: configuraciones de pizzas, gas, botellas y bolas del boss.
 - `src/game/engine/useGameLoop.js`: loop generico del juego.
 - `src/game/engine/useGameInput.js`: teclado y pausa.
@@ -83,6 +84,16 @@ npm run preview
 - Puede esquivar amenazas y saltar hacia atras.
 - Si Mario muere durante combate, el boss celebra antes del reinicio.
 - Al morir el boss, Mario dice una frase de victoria.
+
+### Esbirro Doc
+
+- Se activa cuando el Documento Corrupto baja a 50% de vida o menos.
+- Nace desde el Documento Corrupto, con los pies sobre el piso, y corre hacia Mario.
+- Aparece en intervalos aleatorios de 4 a 8 segundos mientras el boss siga vivo.
+- Mide 40% de la altura idle de Mario.
+- Usa 3 frames recortados desde `assets/docuemenemigo/esbirros/esbirros_doc.png`.
+- Tiene hitbox propia.
+- Si toca a Mario, hace 1 punto de dano y desaparece.
 
 ### Proyectiles
 

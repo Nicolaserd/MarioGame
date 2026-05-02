@@ -40,6 +40,8 @@ Validacion reciente:
 - `src/game/characters/mario/marioConstants.js`: dimensiones, vida, fisica, timers y constantes visuales de Mario.
 - `src/game/characters/corruptDocument/corruptDocumentAssets.js`: assets importados del documento corrupto.
 - `src/game/characters/corruptDocument/corruptDocumentConstants.js`: dimensiones, vida, texto, timing y constantes base del documento corrupto.
+- `src/game/characters/docMinion/docMinionAssets.js`: frames importados del esbirro doc.
+- `src/game/characters/docMinion/docMinionConstants.js`: tamano, dano, velocidad, hitbox, spawn y timing del esbirro doc.
 - `src/game/projectiles/projectileTypes.js`: configuraciones por tipo de proyectil (`PIZZA`, `GAS`, `BOTTLE`, `ENEMY_BALL`, etc.).
 - `src/game/engine/useGameLoop.js`: loop generico con `requestAnimationFrame`; recibe `onTick` de la escena.
 - `src/game/engine/useGameInput.js`: input global de teclado y pausa.
@@ -90,6 +92,7 @@ El menu limpia `keysRef.current` al abrir/cerrar para evitar inputs pegados.
 
 - Refs runtime: `playerRef`, `enemyRef`, `keysRef`, `isPausedRef`, `pizzasRef`, `utilityProjectilesRef`, `enemyProjectilesRef`.
 - Estado visible React: `sceneState`, `enemyState`, `pizzas`, `utilityProjectiles`, `enemyProjectiles`, menu y ajustes.
+- El esbirro doc usa `docMinionsRef`, `docMinions` y `docMinionSystemRef` para spawns activados por vida del boss.
 - Loop con `requestAnimationFrame` mediante `useGameLoop({ isPausedRef, onTick })`; cada escena puede pasar su propio `tick`.
 - Actualizaciones visuales dentro de `startTransition`.
 - Input por listeners globales `keydown`/`keyup` mediante `useGameInput`.
@@ -296,6 +299,19 @@ Combate y colisiones:
 - Al derrotarlo, Mario muestra por `8s`: `Ese documento no estaba bien formateado, hora de ir por unas pizzas`.
 - `resolvePlayerEnemyCollision` evita que Mario y el boss se solapen.
 - `applyBossPushToPlayer` ejecuta el empujon del boss sobre Mario.
+
+Esbirro doc:
+
+- Personaje definido en `src/game/characters/docMinion/`.
+- Sprite fuente original: `assets/docuemenemigo/esbirros/esbirros_doc.png`.
+- Frames recortados generados: `assets/processed/esbirro-doc-run1-crop.png`, `esbirro-doc-run2-crop.png`, `esbirro-doc-run3-crop.png`.
+- Se activa cuando la vida del boss llega a `50%` o menos (`activationHealthRatio = 0.5`).
+- Nace desde la posicion del boss documento enemigo, con los pies sobre el piso, y corre hacia Mario.
+- Mientras el boss siga vivo y vulnerable en esa fase, aparece con intervalo aleatorio entre `4` y `8` segundos.
+- Mide `40%` de la altura idle visual de Mario (`PLAYER_VISUAL.idleHeight`).
+- Tiene hitbox propia `24 x 54`.
+- Hace `1` punto de dano al tocar a Mario y desaparece al impactar.
+- Deja de aparecer cuando el boss muere; tambien se limpian si Mario muere, si el boss deja de estar vulnerable o si se reinicia la partida.
 
 Proyectiles del boss:
 

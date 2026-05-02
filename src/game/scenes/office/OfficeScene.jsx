@@ -74,6 +74,8 @@ import {
   MARIO_ENEMY_DEFEAT_SPEECH_TIME,
   MARIO_ENEMY_DEFEAT_TEXT,
 } from '../../characters/corruptDocument/corruptDocumentConstants.js'
+import { DOC_MINION_RUN_FRAMES } from '../../characters/docMinion/docMinionAssets.js'
+import { DOC_MINION } from '../../characters/docMinion/docMinionConstants.js'
 import { useGameLoop } from '../../engine/useGameLoop.js'
 import { useGameInput } from '../../engine/useGameInput.js'
 import {
@@ -432,6 +434,20 @@ function createInitialEnemy() {
   }
 }
 
+function getDocMinionSpawnCooldown() {
+  return (
+    DOC_MINION.spawnCooldownMin +
+    Math.random() * (DOC_MINION.spawnCooldownMax - DOC_MINION.spawnCooldownMin)
+  )
+}
+
+function createInitialDocMinionSystem() {
+  return {
+    activated: false,
+    spawnTimer: getDocMinionSpawnCooldown(),
+  }
+}
+
 function startEnemyCelebration(enemy, deathX) {
   const targetX = clamp(
     deathX,
@@ -749,6 +765,30 @@ function createEnemyBall(enemy, player) {
   }
 }
 
+function createDocMinion(enemy, player) {
+  const playerCenterX = player.x + PLAYER.width / 2
+  const enemyCenterX = enemy.x + ENEMY.width / 2
+  const direction = playerCenterX >= enemyCenterX ? 1 : -1
+  const x = clamp(
+    enemyCenterX +
+      direction * DOC_MINION.spawnBossOffsetX -
+      DOC_MINION.width / 2,
+    0,
+    WORLD.width - DOC_MINION.width,
+  )
+
+  return {
+    id: crypto.randomUUID?.() ?? `${performance.now()}-${Math.random()}`,
+    x,
+    y: floorSurfaceY,
+    vx: 0,
+    direction,
+    frameClock: 0,
+    emergeTimer: 0,
+    active: true,
+  }
+}
+
 function getPizzaHitbox(pizza) {
   return {
     x: pizza.x + (PIZZA.width - PIZZA.hitboxWidth) / 2,
@@ -787,6 +827,15 @@ function getEnemyHitbox(enemy) {
     y: enemy.y + ENEMY.height - hitboxHeight,
     width: ENEMY.hitboxWidth,
     height: hitboxHeight,
+  }
+}
+
+function getDocMinionHitbox(minion) {
+  return {
+    x: minion.x + (DOC_MINION.width - DOC_MINION.hitboxWidth) / 2,
+    y: minion.y + DOC_MINION.height - DOC_MINION.hitboxHeight,
+    width: DOC_MINION.hitboxWidth,
+    height: DOC_MINION.hitboxHeight,
   }
 }
 
@@ -1076,6 +1125,94 @@ function applyEnemyProjectilesToPlayer(player, projectiles) {
 
     if (!player.invulnerable) {
       player.health = Math.max(0, player.health - projectile.damage)
+      triggerPlayerHurt(player)
+    }
+
+    return false
+  })
+}
+
+function shouldDocMinionsRun(enemy) {
+  return (
+    isEnemyVulnerable(enemy) &&
+    enemy.health > 0 &&
+    enemy.health <= ENEMY.health * DOC_MINION.activationHealthRatio
+  )
+}
+
+function stepDocMinions(system, minions, enemy, player, deltaTime) {
+  const dt = Math.min(deltaTime, 1 / 30)
+
+  if (!shouldDocMinionsRun(enemy)) {
+    return []
+  }
+
+  system.activated = true
+  system.spawnTimer -= dt
+
+  const nextMinions = minions
+    .map((minion) => {
+      const nextMinion = {
+        ...minion,
+        frameClock: minion.frameClock + dt,
+        emergeTimer: Math.min(
+          DOC_MINION.emergeDuration,
+          minion.emergeTimer + dt,
+        ),
+      }
+      const emergeProgress = clamp(
+        nextMinion.emergeTimer / DOC_MINION.emergeDuration,
+        0,
+        1,
+      )
+
+      nextMinion.y =
+        floorSurfaceY -
+        DOC_MINION.height * emergeProgress +
+        DOC_MINION.groundSink
+
+      if (emergeProgress >= 1) {
+        nextMinion.vx = DOC_MINION.speed * nextMinion.direction
+        nextMinion.x += nextMinion.vx * dt
+      }
+
+      if (
+        nextMinion.x + DOC_MINION.width < -80 ||
+        nextMinion.x > WORLD.width + 80
+      ) {
+        nextMinion.active = false
+      }
+
+      return nextMinion
+    })
+    .filter((minion) => minion.active)
+
+  if (
+    system.activated &&
+    system.spawnTimer <= 0 &&
+    nextMinions.length < DOC_MINION.maxAlive
+  ) {
+    nextMinions.push(createDocMinion(enemy, player))
+    system.spawnTimer = getDocMinionSpawnCooldown()
+  }
+
+  return nextMinions
+}
+
+function applyDocMinionsToPlayer(player, minions) {
+  if (player.dying || player.health <= 0) {
+    return minions
+  }
+
+  const playerHitbox = getPlayerHitbox(player)
+
+  return minions.filter((minion) => {
+    if (!intersects(getDocMinionHitbox(minion), playerHitbox)) {
+      return true
+    }
+
+    if (!player.invulnerable) {
+      player.health = Math.max(0, player.health - DOC_MINION.damage)
       triggerPlayerHurt(player)
     }
 
@@ -1849,6 +1986,8 @@ export function OfficeScene() {
   const pizzasRef = useRef([])
   const utilityProjectilesRef = useRef([])
   const enemyProjectilesRef = useRef([])
+  const docMinionsRef = useRef([])
+  const docMinionSystemRef = useRef(createInitialDocMinionSystem())
   const [sceneFit, setSceneFit] = useState({
     scale: 1,
     alignLeft: false,
@@ -1857,6 +1996,7 @@ export function OfficeScene() {
   const [pizzas, setPizzas] = useState([])
   const [utilityProjectiles, setUtilityProjectiles] = useState([])
   const [enemyProjectiles, setEnemyProjectiles] = useState([])
+  const [docMinions, setDocMinions] = useState([])
   const [enemyState, setEnemyState] = useState(initialEnemy)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [activeMenuPanel, setActiveMenuPanel] = useState('main')
@@ -1903,10 +2043,13 @@ export function OfficeScene() {
     pizzasRef.current = []
     utilityProjectilesRef.current = []
     enemyProjectilesRef.current = []
+    docMinionsRef.current = []
+    docMinionSystemRef.current = createInitialDocMinionSystem()
     setSceneState(toSceneState(nextPlayer))
     setPizzas([])
     setUtilityProjectiles([])
     setEnemyProjectiles([])
+    setDocMinions([])
     setEnemyState(nextEnemy)
     setActiveMenuPanel('main')
     setIsMenuOpen(false)
@@ -1989,6 +2132,26 @@ export function OfficeScene() {
       return
     }
 
+    let nextDocMinions =
+      playerStep.resetProjectiles || !shouldDocMinionsRun(nextEnemy)
+        ? []
+        : stepDocMinions(
+            docMinionSystemRef.current,
+            docMinionsRef.current,
+            nextEnemy,
+            playerRef.current,
+            deltaTime,
+          )
+
+    if (playerStep.resetProjectiles || !shouldDocMinionsRun(nextEnemy)) {
+      docMinionSystemRef.current = createInitialDocMinionSystem()
+    }
+
+    nextDocMinions = applyDocMinionsToPlayer(
+      playerRef.current,
+      nextDocMinions,
+    )
+
     let nextEnemyProjectiles = playerStep.resetProjectiles
       ? []
       : stepEnemyProjectiles(
@@ -2017,6 +2180,7 @@ export function OfficeScene() {
     pizzasRef.current = nextPizzas
     utilityProjectilesRef.current = nextUtilityProjectiles
     enemyProjectilesRef.current = nextEnemyProjectiles
+    docMinionsRef.current = nextDocMinions
 
     startTransition(() => {
       setSceneState(toSceneState(playerRef.current))
@@ -2024,6 +2188,7 @@ export function OfficeScene() {
       setPizzas(nextPizzas)
       setUtilityProjectiles(nextUtilityProjectiles)
       setEnemyProjectiles(nextEnemyProjectiles)
+      setDocMinions(nextDocMinions)
     })
   }
 
@@ -2250,6 +2415,48 @@ export function OfficeScene() {
                     }}
                   >
                     <img src={projectile.image} alt="" draggable="false" />
+                  </div>
+                </div>
+              )
+            })}
+
+            {docMinions.map((minion) => {
+              const hitbox = getDocMinionHitbox(minion)
+              const frameIndex =
+                Math.floor(minion.frameClock / DOC_MINION.frameTime) %
+                DOC_MINION_RUN_FRAMES.length
+
+              return (
+                <div key={minion.id}>
+                  {showHitboxes ? (
+                    <div
+                      className="doc-minion-hitbox"
+                      aria-hidden="true"
+                      style={{
+                        left: `${hitbox.x}px`,
+                        top: `${hitbox.y}px`,
+                        width: `${hitbox.width}px`,
+                        height: `${hitbox.height}px`,
+                      }}
+                    />
+                  ) : null}
+
+                  <div
+                    className={`doc-minion-sprite ${
+                      minion.direction < 0 ? 'face-left' : 'face-right'
+                    }`}
+                    style={{
+                      left: `${minion.x}px`,
+                      top: `${minion.y}px`,
+                      width: `${DOC_MINION.width}px`,
+                      height: `${DOC_MINION.height}px`,
+                    }}
+                  >
+                    <img
+                      src={DOC_MINION_RUN_FRAMES[frameIndex]}
+                      alt=""
+                      draggable="false"
+                    />
                   </div>
                 </div>
               )
