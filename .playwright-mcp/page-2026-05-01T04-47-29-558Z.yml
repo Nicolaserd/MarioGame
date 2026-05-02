@@ -1,7 +1,0 @@
-- main [ref=e3]:
-  - generic [ref=e6]:
-    - generic [ref=e9]:
-      - img "Piso de oficina" [ref=e11]
-      - img "Mario" [ref=e13]
-    - generic "Vida 5 de 5" [ref=e14]:
-      - generic "Pizzas 5 de 5" [ref=e16]

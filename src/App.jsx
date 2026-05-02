@@ -1,10 +1,10 @@
 import './App.css'
-import { GameScene } from './components/GameScene.jsx'
+import { OfficeScene } from './game/scenes/office/OfficeScene.jsx'
 
 function App() {
   return (
     <main className="app-shell">
-      <GameScene />
+      <OfficeScene />
     </main>
   )
 }

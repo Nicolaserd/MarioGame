@@ -4,7 +4,7 @@
 
 Juego 2D hecho con React + Vite. La pantalla principal es directamente el juego: una escena de oficina con parallax, mundo horizontal ancho, Mario controlable, HUD, menu de pausa, proyectiles, util, escudo y un boss documento con IA propia.
 
-La fuente principal de verdad es `src/components/GameScene.jsx`. La IA del boss vive separada en `src/hooks/useBossAI.js`.
+La fuente principal de verdad ahora es `src/game/scenes/office/OfficeScene.jsx`. `src/App.jsx` importa esa escena directamente. La IA del boss vive separada en `src/hooks/useBossAI.js`.
 
 ## Stack y comandos
 
@@ -32,16 +32,30 @@ Validacion reciente:
 
 - `index.html`: titulo y favicon de la app.
 - `src/main.jsx`: monta React en `#root` con `StrictMode`.
-- `src/App.jsx`: renderiza `GameScene` dentro de `.app-shell`.
-- `src/components/GameScene.jsx`: gameplay, fisica, input, HUD, pausa, render de escena, proyectiles y coordinacion con el boss.
+- `src/App.jsx`: renderiza `OfficeScene` dentro de `.app-shell`.
+- `src/game/scenes/office/OfficeScene.jsx`: escena actual de oficina; coordina gameplay, estado runtime, personajes, proyectiles, colisiones y render.
+- `src/game/scenes/office/officeConstants.js`: constantes de escena (`SCENE`, `WORLD`, `FLOOR`, `FLOOR_SEGMENTS`, `SPAWN`, `floorSurfaceY`).
+- `src/game/scenes/office/officeAssets.js`: fondos y piso de la oficina.
+- `src/game/characters/mario/marioAssets.js`: assets importados de Mario y su HUD.
+- `src/game/characters/mario/marioConstants.js`: dimensiones, vida, fisica, timers y constantes visuales de Mario.
+- `src/game/characters/corruptDocument/corruptDocumentAssets.js`: assets importados del documento corrupto.
+- `src/game/characters/corruptDocument/corruptDocumentConstants.js`: dimensiones, vida, texto, timing y constantes base del documento corrupto.
+- `src/game/projectiles/projectileTypes.js`: configuraciones por tipo de proyectil (`PIZZA`, `GAS`, `BOTTLE`, `ENEMY_BALL`, etc.).
+- `src/game/engine/useGameLoop.js`: loop generico con `requestAnimationFrame`; recibe `onTick` de la escena.
+- `src/game/engine/useGameInput.js`: input global de teclado y pausa.
+- `src/game/physics/collision.js`: utilidades generales `clamp` e `intersects`.
+- `src/game/ui/GameHud.jsx`: HUD reusable.
+- `src/game/ui/PauseMenu.jsx`: menu de pausa reusable.
+- `src/game/ui/SpeechBubble.jsx`: viñeta reutilizable de conversacion con caret opcional.
 - `src/hooks/useBossAI.js`: FSM/IA del documento enemigo.
 - `src/App.css`: estilos de escena, sprites, HUD, hitboxes, menu, efectos de util y responsive.
 - `src/index.css`: reset global y fondo base.
-- `README.md`: conserva texto de plantilla Vite; no usarlo como documentacion funcional del juego.
+- `AGENT_HANDOFF.md`: unico documento raiz de referencia funcional y arquitectonica. El `README.md` viejo de plantilla Vite fue eliminado porque no se usaba.
+- Limpieza reciente: tambien se eliminaron artefactos no usados de plantilla/generados (`src/assets/*`, `public/favicon.svg`, `public/icons.svg`, `image/AGENT_HANDOFF/`, `output/playwright/`, `.playwright-cli/`, `.playwright-mcp/`). No recrearlos salvo que vuelvan a tener uso real.
 
 ## Constantes base del juego
 
-En `GameScene.jsx`:
+En `src/game/scenes/office/officeConstants.js` y `OfficeScene.jsx`:
 
 - `SCENE`: viewport logico de `960 x 560`.
 - `WORLD.width`: `4200`.
@@ -71,15 +85,34 @@ El menu limpia `keysRef.current` al abrir/cerrar para evitar inputs pegados.
 
 ## Arquitectura runtime
 
-`GameScene` usa refs para el estado de alta frecuencia y estado React para pintar:
+`OfficeScene` usa refs para el estado de alta frecuencia y estado React para pintar:
 
 - Refs runtime: `playerRef`, `enemyRef`, `keysRef`, `isPausedRef`, `pizzasRef`, `utilityProjectilesRef`, `enemyProjectilesRef`.
 - Estado visible React: `sceneState`, `enemyState`, `pizzas`, `utilityProjectiles`, `enemyProjectiles`, menu y ajustes.
-- Loop con `requestAnimationFrame`.
+- Loop con `requestAnimationFrame` mediante `useGameLoop({ isPausedRef, onTick })`; cada escena puede pasar su propio `tick`.
 - Actualizaciones visuales dentro de `startTransition`.
-- Input por listeners globales `keydown`/`keyup`.
+- Input por listeners globales `keydown`/`keyup` mediante `useGameInput`.
 
 `resetGame()` reinicia jugador, enemigo, proyectiles, teclas, menu y estados visibles.
+
+## Reglas obligatorias de modularizacion
+
+Estas reglas se deben seguir si o si para cualquier cambio nuevo:
+
+- No recrear `src/components/GameScene.jsx` ni meter logica ahi; la escena actual vive en `src/game/scenes/office/OfficeScene.jsx`.
+- Toda escena nueva debe vivir en `src/game/scenes/<nombreEscena>/` con sus propios assets, constantes y componente principal.
+- Todo personaje nuevo debe tener carpeta propia en `src/game/characters/<nombrePersonaje>/` para assets, constantes y comportamiento propio.
+- Los componentes reutilizables de UI deben ir en `src/game/ui/`; no duplicar HUD, menu, viñetas o overlays dentro de una escena.
+- Las configuraciones de proyectiles deben vivir en `src/game/projectiles/projectileTypes.js` o en modulos dentro de `src/game/projectiles/`; no hardcodear velocidades/dano/gravedad en JSX si se pueden declarar por tipo.
+- La escena coordina reglas de colision entre personajes/proyectiles, pero debe reutilizar utilidades generales de `src/game/physics/` cuando existan.
+- El loop debe seguir siendo generico mediante `useGameLoop`; cada escena pasa su propio `tick`.
+- El input global debe pasar por `useGameInput`, salvo que una escena tenga una razon fuerte para un input especial.
+- Antes de crear codigo nuevo, revisar si ya existe un modulo reusable o una regla planeada que coincida con lo que se quiere aplicar.
+- Antes de aplicar DRY, comparar si la logica nueva se puede reutilizar sin forzarla y si coincide con la arquitectura planeada: responsabilidades compatibles, datos adaptables, efectos esperados y una razon de cambio razonablemente cercana.
+- Aplicar DRY cuando se pueda usar/reutilizar bien y coincida con lo planeado, aunque no sea identico; adaptar mediante parametros o configuraciones por tipo si eso mantiene claridad.
+- Si una logica se repite dos veces o mas y puede reutilizarse de forma limpia, extraerla a un modulo, helper, componente o configuracion compartida.
+- No crear abstracciones gigantes que borren diferencias importantes: pizzas, gas, botellas y bolas del boss pueden compartir motor, pero conservar configuraciones/comportamientos por tipo.
+- Si se mueve logica, mantener primero compatibilidad y verificar con `npm run lint` y `npm run build`.
 
 ## Estado del jugador
 
@@ -354,7 +387,7 @@ Boss procesado:
 - `assets/processed/docuemenemigo-tirar-crop.png`.
 - `assets/processed/docuemenemigo-bola-crop.png`.
 
-Existen mas assets originales/procesados en el repo (`fondo2`, `personas`, `bloque1`, `docuemenemigo-idle1-crop`, `docuemenemigo-atras-crop`, etc.), pero actualmente no estan importados por `GameScene.jsx`.
+Existen mas assets originales/procesados en el repo (`fondo2`, `personas`, `bloque1`, `docuemenemigo-idle1-crop`, `docuemenemigo-atras-crop`, etc.), pero actualmente no estan importados por `OfficeScene.jsx`.
 
 ## CSS relevante
 
@@ -373,15 +406,20 @@ Existen mas assets originales/procesados en el repo (`fondo2`, `personas`, `bloq
 
 Si se toca animacion/sprites:
 
-- Revisar imports de sprites.
+- Revisar `src/game/characters/mario/marioAssets.js`, `marioConstants.js`, `src/game/characters/corruptDocument/corruptDocumentAssets.js` y `corruptDocumentConstants.js`.
 - Actualizar `SPRITE_METRICS`.
 - Probar `currentFootAnchorX`, `playerFootX`, `playerFootY`.
 - Probar hitbox visible con `showHitboxes`.
 
 Si se toca fisica/plataformas:
 
-- Revisar `stepPlayer`, `standingOnGround`, `getFloorSegmentAtFoot`, `FLOOR_SEGMENTS`, `getCamera`.
+- Revisar `stepPlayer`, `standingOnGround`, `getFloorSegmentAtFoot`, `FLOOR_SEGMENTS`, `getCamera`, `officeConstants.js` y `physics/collision.js`.
 - Para multiples plataformas, no basta con sumar segmentos: conviene resolver colision vertical contra la plataforma mas cercana debajo del jugador.
+
+Si se toca proyectiles:
+
+- Revisar `src/game/projectiles/projectileTypes.js` para velocidades, gravedad, dano, rebotes y parametros de apuntado.
+- La escena sigue coordinando colisiones entre proyectiles/personajes; el modulo de proyectiles no decide a quien golpea.
 
 Si se toca muerte/reinicio:
 
@@ -395,7 +433,7 @@ Si se toca el boss:
 
 Si se toca menu/HUD:
 
-- Revisar `openMenu`, `closeMenu`, `resetGame`, `isPausedRef`, `activeMenuPanel`, `showHitboxes`, `reducedMenuMotion`.
+- Revisar `GameHud.jsx`, `PauseMenu.jsx`, `SpeechBubble.jsx`, `openMenu`, `closeMenu`, `resetGame`, `isPausedRef`, `activeMenuPanel`, `showHitboxes`, `reducedMenuMotion`.
 - Probar teclado despues de cerrar menu.
 
 ## Pendientes razonables
@@ -405,8 +443,8 @@ Si se toca menu/HUD:
 3. Agregar objetivo jugable: recolectables, niveles o final de escena.
 4. Mejorar sistema de plataformas multiples.
 5. Persistir estadisticas si se quiere usar `deaths` como contador real.
-6. Pasar parte de `GameScene.jsx` a modulos si crece mas: constantes, sprites, fisica, proyectiles y render HUD.
+6. Pasar mas logica de `OfficeScene.jsx` a modulos si crece mas: comportamiento de Mario, comportamiento del boss, factories de proyectiles y render layers.
 
 ## Nota final
 
-Usar este archivo como contexto principal del repo. Si hay duda, verificar contra `src/components/GameScene.jsx` y `src/hooks/useBossAI.js`, que son la fuente real del comportamiento actual.
+Usar este archivo como contexto principal del repo. Si hay duda, verificar contra `src/game/scenes/office/OfficeScene.jsx` y `src/hooks/useBossAI.js`, que son la fuente real del comportamiento actual.
