@@ -48,7 +48,6 @@ import enemyDeath4 from '../../assets/processed/docuemenemigo-muerte4-crop.png'
 import enemyJump from '../../assets/processed/docuemenemigo-saltar-crop.png'
 import enemyCrouch from '../../assets/processed/docuemenemigo-agachar-crop.png'
 import enemyStunned from '../../assets/processed/docuemenemigo-stuneado-crop.png'
-import enemyBackJump from '../../assets/processed/docuemenemigo-atras-crop.png'
 import enemyThrow from '../../assets/processed/docuemenemigo-tirar-crop.png'
 import enemyBall from '../../assets/processed/docuemenemigo-bola-crop.png'
 import util1 from '../../assets/processed/util1-crop.png'
@@ -112,13 +111,22 @@ const ENEMY = {
 }
 
 const ENEMY_BALL = {
-  width: 58,
-  height: 58,
-  hitboxWidth: 54,
-  hitboxHeight: 54,
+  width: 29,
+  height: 29,
+  hitboxWidth: 27,
+  hitboxHeight: 27,
   damage: 1,
-  speed: 520,
-  lifetime: 3.2,
+  speed: 315,
+  gravity: 720,
+  aimLeadFactor: 0.58,
+  aimMissChance: 0.3,
+  aimMissOffsetX: 180,
+  aimMissOffsetY: 92,
+  minVelocityY: -560,
+  maxVelocityY: 180,
+  floorBounceVelocity: 260,
+  maxBounces: 3,
+  lifetime: 4.6,
   launchOffsetX: 134,
   launchOffsetY: 72,
 }
@@ -456,7 +464,7 @@ const ENEMY_SPRITES = {
   jump: enemyJump,
   crouch: enemyCrouch,
   stunned: enemyStunned,
-  backJump: enemyBackJump,
+  backJump: enemyJump,
   throw: enemyThrow,
 }
 const PLAYER_VISUAL_SCALE =
@@ -559,6 +567,7 @@ function createInitialEnemy() {
     sprite: enemyIdle2,
     celebrationTargetX: 0,
     celebrationTalkTimer: 0,
+    shouldResetGame: false,
   }
 }
 
@@ -599,6 +608,7 @@ function startEnemyCelebration(enemy, deathX) {
   enemy.escapeTargetDistance = 0
   enemy.thrownEnemyProjectiles = []
   enemy.justDefeated = false
+  enemy.shouldResetGame = false
 }
 
 function createEmptyKeys() {
@@ -828,26 +838,55 @@ function createBottle(player) {
   }
 }
 
-function createEnemyBall(enemy) {
-  const direction = enemy.facing < 0 ? -1 : 1
+function createEnemyBall(enemy, player) {
+  const playerCenterX = player.x + PLAYER.width / 2
+  const playerCenterY = player.y + PLAYER.height * 0.42
+  const initialDirection = playerCenterX >= enemy.x + ENEMY.width / 2 ? 1 : -1
+  const direction = initialDirection
   const x =
     direction > 0
       ? enemy.x + ENEMY.width / 2 + ENEMY_BALL.launchOffsetX
       : enemy.x + ENEMY.width / 2 - ENEMY_BALL.launchOffsetX - ENEMY_BALL.width
+  const y = enemy.y + ENEMY_BALL.launchOffsetY
+  const launchCenterX = x + ENEMY_BALL.width / 2
+  const launchCenterY = y + ENEMY_BALL.height / 2
+  const firstFlightTime = Math.max(
+    0.25,
+    Math.abs(playerCenterX - launchCenterX) / ENEMY_BALL.speed,
+  )
+  let targetX =
+    playerCenterX + (player.vx ?? 0) * firstFlightTime * ENEMY_BALL.aimLeadFactor
+  let targetY =
+    playerCenterY + (player.vy ?? 0) * firstFlightTime * ENEMY_BALL.aimLeadFactor
+
+  if (Math.random() < ENEMY_BALL.aimMissChance) {
+    targetX += (Math.random() * 2 - 1) * ENEMY_BALL.aimMissOffsetX
+    targetY += (Math.random() * 2 - 1) * ENEMY_BALL.aimMissOffsetY
+  }
+
+  const dx = targetX - launchCenterX
+  const shotDirection = dx >= 0 ? 1 : -1
+  const vx = ENEMY_BALL.speed * shotDirection
+  const flightTime = Math.max(0.25, Math.abs(dx) / ENEMY_BALL.speed)
+  const rawVy =
+    (targetY - launchCenterY - 0.5 * ENEMY_BALL.gravity * flightTime ** 2) /
+    flightTime
+  const vy = clamp(rawVy, ENEMY_BALL.minVelocityY, ENEMY_BALL.maxVelocityY)
 
   return {
     id: crypto.randomUUID?.() ?? `${performance.now()}-${Math.random()}`,
     image: enemyBall,
     x,
-    y: enemy.y + ENEMY_BALL.launchOffsetY,
-    vx: ENEMY_BALL.speed * direction,
-    vy: 0,
+    y,
+    vx,
+    vy,
     width: ENEMY_BALL.width,
     height: ENEMY_BALL.height,
     hitboxWidth: ENEMY_BALL.hitboxWidth,
     hitboxHeight: ENEMY_BALL.hitboxHeight,
     damage: ENEMY_BALL.damage,
-    direction,
+    direction: shotDirection,
+    bounces: 0,
     lifetime: ENEMY_BALL.lifetime,
     active: true,
   }
@@ -1134,20 +1173,45 @@ function stepEnemyProjectiles(projectiles, deltaTime) {
   const dt = Math.min(deltaTime, 1 / 30)
 
   return projectiles
-    .map((projectile) => ({
-      ...projectile,
-      x: projectile.x + projectile.vx * dt,
-      y: projectile.y + projectile.vy * dt,
-      lifetime: projectile.lifetime - dt,
-    }))
-    .filter(
-      (projectile) =>
-        projectile.active &&
-        projectile.x + projectile.width >= 0 &&
-        projectile.x <= WORLD.width &&
-        projectile.y <= WORLD.killY &&
-        projectile.lifetime > 0,
-    )
+    .map((projectile) => {
+      const nextProjectile = {
+        ...projectile,
+        x: projectile.x + projectile.vx * dt,
+        y: projectile.y + projectile.vy * dt,
+        vy: projectile.vy + ENEMY_BALL.gravity * dt,
+        lifetime: projectile.lifetime - dt,
+      }
+      const hitbox = getEnemyProjectileHitbox(nextProjectile)
+      const floorSegment = getFloorSegmentAtFoot(hitbox.x + hitbox.width / 2)
+      const hitboxBottom = hitbox.y + hitbox.height
+
+      if (floorSegment && nextProjectile.vy >= 0 && hitboxBottom >= floorSurfaceY) {
+        const correctedHitboxTop = floorSurfaceY - nextProjectile.hitboxHeight
+        nextProjectile.y =
+          correctedHitboxTop -
+          (nextProjectile.height - nextProjectile.hitboxHeight) / 2
+        nextProjectile.bounces = (nextProjectile.bounces ?? 0) + 1
+
+        if (nextProjectile.bounces > ENEMY_BALL.maxBounces) {
+          nextProjectile.active = false
+        } else {
+          nextProjectile.vy = -ENEMY_BALL.floorBounceVelocity
+          nextProjectile.vx *= 0.78
+        }
+      }
+
+      if (
+        nextProjectile.x + nextProjectile.width < 0 ||
+        nextProjectile.x > WORLD.width ||
+        nextProjectile.y > WORLD.killY ||
+        nextProjectile.lifetime <= 0
+      ) {
+        nextProjectile.active = false
+      }
+
+      return nextProjectile
+    })
+    .filter((projectile) => projectile.active)
 }
 
 function applyEnemyProjectilesToPlayer(player, projectiles) {
@@ -1223,6 +1287,7 @@ function stepEnemy(enemy, player, deltaTime, playerProjectiles, updateBossAI) {
   const movedFromSpawn = Math.abs(player.x - SPAWN.x) > ENEMY.triggerDistance
   enemy.justDefeated = false
   enemy.thrownEnemyProjectiles = []
+  enemy.shouldResetGame = false
 
   if (!enemy.active && !enemy.entered && !enemy.defeated && movedFromSpawn) {
     enemy.active = true
@@ -1330,6 +1395,7 @@ function stepEnemy(enemy, player, deltaTime, playerProjectiles, updateBossAI) {
       enemy.celebrationTalkTimer = 0
       enemy.speechText = ''
       enemy.sprite = enemyIdle2
+      enemy.shouldResetGame = true
     }
   } else if (!enemy.entered) {
     enemy.x = Math.max(enemy.targetX, enemy.x - ENEMY.enterSpeed * dt)
@@ -1390,7 +1456,7 @@ function stepEnemy(enemy, player, deltaTime, playerProjectiles, updateBossAI) {
     )
 
     if (enemy.pendingShot) {
-      enemy.thrownEnemyProjectiles.push(createEnemyBall(enemy))
+      enemy.thrownEnemyProjectiles.push(createEnemyBall(enemy, player))
       enemy.pendingShot = false
     }
 
@@ -1577,10 +1643,8 @@ function stepPlayer(player, keys, deltaTime) {
     }
 
     if (player.deathTimer >= getDeathDuration()) {
-      const deaths = player.deaths + 1
       const capturedDeathX = player.deathX
       Object.assign(player, createInitialPlayer(), {
-        deaths,
         brakeTimer: PHYSICS.landingBrakeDuration,
       })
       respawnedAfterDeath.current = true
@@ -2143,6 +2207,10 @@ export function GameScene() {
           deltaTime,
         )
     const currentEnemy = enemyRef.current
+    const enemyIsCelebrating = [
+      'celebrating_walk',
+      'celebrating_talk',
+    ].includes(currentEnemy.mode)
     const enemyShouldCelebrate =
       playerStep.resetProjectiles &&
       currentEnemy.active &&
@@ -2163,7 +2231,8 @@ export function GameScene() {
       )
     }
 
-    const shouldResetEnemy = playerStep.resetProjectiles && !enemyShouldCelebrate
+    const shouldResetEnemy =
+      playerStep.resetProjectiles && !enemyShouldCelebrate && !enemyIsCelebrating
 
     let nextEnemy = shouldResetEnemy
       ? createInitialEnemy()
@@ -2183,6 +2252,12 @@ export function GameScene() {
     nextEnemy = hitResult.enemy
     nextPizzas = hitResult.pizzas
     nextUtilityProjectiles = hitResult.utilityProjectiles
+
+    if (nextEnemy.shouldResetGame) {
+      resetGame()
+      return
+    }
+
     let nextEnemyProjectiles = playerStep.resetProjectiles
       ? []
       : stepEnemyProjectiles(
@@ -2718,4 +2793,3 @@ export function GameScene() {
     </section>
   )
 }
-

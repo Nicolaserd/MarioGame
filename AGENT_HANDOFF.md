@@ -1,522 +1,412 @@
-# Mario en busca del dato perdido - Handoff
+# Mario en busca del dato perdido - Agent handoff
 
-## Resumen
+## Estado actual
 
-Proyecto de juego 2D en **React + Vite**.
+Juego 2D hecho con React + Vite. La pantalla principal es directamente el juego: una escena de oficina con parallax, mundo horizontal ancho, Mario controlable, HUD, menu de pausa, proyectiles, util, escudo y un boss documento con IA propia.
 
-Estado actual:
+La fuente principal de verdad es `src/components/GameScene.jsx`. La IA del boss vive separada en `src/hooks/useBossAI.js`.
 
-- Escena a pantalla completa con fondo de oficina en parallax.
-- Mundo ancho con camara horizontal que sigue a Mario.
-- Un segmento de suelo principal definido en `FLOOR_SEGMENTS`.
-- Personaje con gravedad, movimiento horizontal, salto, freno al aterrizar y respawn por caida.
-- Estados visuales: `idle`, `correr`, `saltar`, `caer`, `freno`, `lanzar` y `agachado`.
-- HUD con vida y municion de pizzas.
-- La vida de Mario se muestra como 5 corazones; `visibleHearts` se calcula desde `sceneState.health`, asi que dano `1` quita 1 corazon, dano `2` quita 2, etc.
-- Sistema de util activado con `G`, cargas por botellas y gas.
-- Enemigo documento con 100 de vida, entrada caminando y barra de vida.
-- Menu de pausa con blur sobre el juego, animaciones, controles, ajustes y reinicio.
-- Favicon personalizado con la cara de Mario.
-- Titulo del documento: `Mario en busca del dato perdido`.
+## Stack y comandos
 
-## Stack
+- React 19.
+- Vite 8.
+- CSS plano.
+- JavaScript con modulos ESM.
 
-- React 19
-- Vite
-- CSS plano
-- Gameplay centralizado principalmente en `src/components/GameScene.jsx`
-
-## Comandos
-
-Instalacion:
+Comandos:
 
 ```bash
 npm install
-```
-
-Desarrollo:
-
-```bash
 npm run dev
-```
-
-Build:
-
-```bash
 npm run build
-```
-
-Lint:
-
-```bash
 npm run lint
+npm run preview
 ```
 
-## Controles actuales
+Validacion reciente:
 
-- `A` o `ArrowLeft`: mover a la izquierda.
-- `D` o `ArrowRight`: mover a la derecha.
-- `Space`, `W` o `ArrowUp`: saltar.
+- `npm run lint` pasa.
+- `npm run build` pasa.
+
+## Estructura principal
+
+- `index.html`: titulo y favicon de la app.
+- `src/main.jsx`: monta React en `#root` con `StrictMode`.
+- `src/App.jsx`: renderiza `GameScene` dentro de `.app-shell`.
+- `src/components/GameScene.jsx`: gameplay, fisica, input, HUD, pausa, render de escena, proyectiles y coordinacion con el boss.
+- `src/hooks/useBossAI.js`: FSM/IA del documento enemigo.
+- `src/App.css`: estilos de escena, sprites, HUD, hitboxes, menu, efectos de util y responsive.
+- `src/index.css`: reset global y fondo base.
+- `README.md`: conserva texto de plantilla Vite; no usarlo como documentacion funcional del juego.
+
+## Constantes base del juego
+
+En `GameScene.jsx`:
+
+- `SCENE`: viewport logico de `960 x 560`.
+- `WORLD.width`: `4200`.
+- `WORLD.killY`: `900`.
+- `FLOOR.y`: `460`.
+- `FLOOR.surfaceInset`: `10`.
+- `floorSurfaceY`: `FLOOR.y + FLOOR.surfaceInset`.
+- `FLOOR_SEGMENTS`: actualmente una sola plataforma grande `{ x: -120, width: WORLD.width + 240 }`.
+- `SPAWN.x`: `92`.
+- `PLAYER`: `width 96`, `height 172`, `health 5`, `pizzaAmmo 5`.
+- `ENEMY`: vida `100`, ancho visual `350`, alto `PLAYER.height * 1.3`, hitbox real `210 x ENEMY.height`.
+
+## Controles
+
+- `A` o `ArrowLeft`: mover izquierda.
+- `D` o `ArrowRight`: mover derecha.
+- `W`, `Space` o `ArrowUp`: saltar.
 - `S` o `ArrowDown`: agacharse.
-- `P`: lanzar pizza, o botella durante la parte post-gas de la util.
-- `G`: activar la util si hay una botella disponible.
-- `O`: activar escudo durante 3 segundos, con cooldown de 9 segundos.
-- `M`: forzar muerte del personaje.
-- `Escape`: abrir o cerrar el menu de pausa.
-- Click en el boton de menu: pausa el juego y abre el menu.
+- `P`: lanzar pizza; durante la fase post-gas de la util lanza botellas.
+- `G`: activar la util si hay carga disponible.
+- `O`: activar escudo mientras se mantiene presionado.
+- `M`: forzar muerte de Mario.
+- `Escape`: abrir/cerrar menu de pausa.
+- Boton hamburguesa: abre el menu de pausa.
 
-## Archivos importantes
+El menu limpia `keysRef.current` al abrir/cerrar para evitar inputs pegados.
 
-- `index.html`
-  - Usa `/mario-face.png` como favicon.
-  - Define el titulo de la pestana.
-- `package.json`
-  - Nombre del proyecto: `mario-en-busca-del-dato-perdido`.
-- `src/App.jsx`
-  - Renderiza la escena del juego.
-- `src/components/GameScene.jsx`
-  - Logica principal del juego.
-  - Fisica, input, estados de animacion, camara, pizzas, pausa, menu, HUD y anclaje visual de sprites.
-- `src/App.css`
-  - Layout fullscreen, escena, HUD, hitboxes, menu de pausa y animaciones de menu.
-- `src/index.css`
-  - Reset y fondo global.
-- `public/mario-face.png`
-  - Favicon generado desde el sprite idle.
+## Arquitectura runtime
 
-## Assets usados
+`GameScene` usa refs para el estado de alta frecuencia y estado React para pintar:
 
-### Originales
+- Refs runtime: `playerRef`, `enemyRef`, `keysRef`, `isPausedRef`, `pizzasRef`, `utilityProjectilesRef`, `enemyProjectilesRef`.
+- Estado visible React: `sceneState`, `enemyState`, `pizzas`, `utilityProjectiles`, `enemyProjectiles`, menu y ajustes.
+- Loop con `requestAnimationFrame`.
+- Actualizaciones visuales dentro de `startTransition`.
+- Input por listeners globales `keydown`/`keyup`.
 
-- `assets/Entorno/oficina/fondo.png`
-- `assets/Entorno/oficina/fondo1.png`
-- `assets/Entorno/oficina/piso.png`
-- `assets/Mario/atributos/corazon.png`
-- `assets/Mario/atributos/pizza.png`
-- `assets/Mario/atributos/lanzar.png`
-- `assets/Mario/atributos/pizzalanzada.png`
-- `assets/Mario/atributos/Botellas.png`
-- `assets/Mario/ide/idle1.png`
-- `assets/Mario/ide/idle2.png`
-- `assets/Mario/ide/freno.png`
-- `assets/Mario/correr/correr1.png`
-- `assets/Mario/correr/correr2.png`
-- `assets/Mario/correr/correr3.png`
-- `assets/Mario/saltar/saltar.png`
-- `assets/Mario/caer/caer.png`
-- `assets/Mario/agachar/agachar.png`
-- `assets/Mario/marioutil/util1.png`
-- `assets/Mario/marioutil/util2.png`
-- `assets/Mario/marioutil/util3.png`
-- `assets/Mario/marioutil/util4.png`
-- `assets/Mario/marioutil/util5.png`
-- `assets/Mario/marioutil/util6.png`
-- `assets/Mario/marioutil/vomitoGas.png`
-- `assets/Mario/morir/morir1.png`
-- `assets/Mario/morir/morir2.png`
-- `assets/Mario/morir/morir3.png`
-- `assets/Mario/Escudo/escudo1.png`
-- `assets/Mario/Escudo/escudo2.png`
-- `assets/Mario/empujado/empuje1.png`
-- `assets/Mario/empujado/empuje2.png`
-- `assets/Mario/atacado/atacado.png`
-- `assets/docuemenemigo/caminar/caminar.png`
-- `assets/docuemenemigo/idle/idel_doc_2.png`
-- `assets/docuemenemigo/hablar/hablar_doc.png`
-- `assets/docuemenemigo/muerte de hoja/muerte_doc.png`
-- `assets/docuemenemigo/saltar/salto_doc.png`
-- `assets/docuemenemigo/agachar/agachar_doc.png`
-- `assets/docuemenemigo/stuneado/stuneado_doc.png`
-- `assets/docuemenemigo/atras/atras_doc.png`
-- `assets/docuemenemigo/atacar/tirar_doc.png`
-- `assets/docuemenemigo/atacar/bola_doc.png`
+`resetGame()` reinicia jugador, enemigo, proyectiles, teclas, menu y estados visibles.
 
-### Procesados
+## Estado del jugador
 
-El juego usa versiones recortadas para Mario:
+`createInitialPlayer()` crea el estado base:
 
-- `assets/processed/idle1-crop.png`
-- `assets/processed/idle2-crop.png`
-- `assets/processed/freno-crop.png`
-- `assets/processed/correr1-crop.png`
-- `assets/processed/correr2-crop.png`
-- `assets/processed/correr3-crop.png`
-- `assets/processed/saltar-crop.png`
-- `assets/processed/caer-crop.png`
-- `assets/processed/agachar-crop.png`
-- `assets/processed/util1-crop.png`
-- `assets/processed/util2-crop.png`
-- `assets/processed/util3-crop.png`
-- `assets/processed/util4-crop.png`
-- `assets/processed/util5-crop.png`
-- `assets/processed/util6-crop.png`
-- `assets/processed/vomitoGas-crop.png`
-- `assets/processed/Botellas-crop.png`
-- `assets/processed/morir1-crop.png`
-- `assets/processed/morir2-crop.png`
-- `assets/processed/morir3-crop.png`
-- `assets/processed/escudo1-crop.png`
-- `assets/processed/escudo2-crop.png`
-- `assets/processed/empuje1-crop.png`
-- `assets/processed/empuje2-crop.png`
-- `assets/processed/atacado-crop.png`
-- `assets/processed/docuemenemigo-caminar1-crop.png`
-- `assets/processed/docuemenemigo-caminar2-crop.png`
-- `assets/processed/docuemenemigo-idle2-crop.png`
-- `assets/processed/docuemenemigo-hablar1-crop.png`
-- `assets/processed/docuemenemigo-hablar2-crop.png`
-- `assets/processed/docuemenemigo-muerte1-crop.png`
-- `assets/processed/docuemenemigo-muerte2-crop.png`
-- `assets/processed/docuemenemigo-muerte3-crop.png`
-- `assets/processed/docuemenemigo-muerte4-crop.png`
-- `assets/processed/docuemenemigo-saltar-crop.png`
-- `assets/processed/docuemenemigo-agachar-crop.png`
-- `assets/processed/docuemenemigo-stuneado-crop.png`
-- `assets/processed/docuemenemigo-atras-crop.png`
-- `assets/processed/docuemenemigo-tirar-crop.png`
-- `assets/processed/docuemenemigo-bola-crop.png`
+- Posicion inicial sobre el piso.
+- Velocidades `vx/vy` en `0`.
+- `facing: 1`.
+- Timers de freno, lanzamiento, util, escudo, muerte, speech, empujon y dano en `0`.
+- `utilityCharges: 2`.
+- `health: 5`.
+- `pizzaAmmo: 5`.
+- `sprite: idle1`.
 
-Tambien existe `assets/processed/bloque1-crop.png`, pero el suelo actual usa `assets/Entorno/oficina/piso.png`.
+`deaths` existe en el estado, pero actualmente no se muestra en HUD y tras el flujo actual de muerte se reinicia con `createInitialPlayer()`; no tratarlo como contador persistente.
 
-## Nota importante sobre sprites
+## Movimiento y fisica de Mario
 
-Los PNG originales no venian como sprites compactos clasicos; varias imagenes tienen mucho margen o fondo.
+Constantes en `PHYSICS`:
 
-Por eso:
+- Gravedad: `1950`.
+- Aceleracion: `1200`.
+- Friccion: `1400`.
+- Velocidad maxima: `300`.
+- Salto: `760`.
+- Freno: `brakeDuration 0.38`, `landingBrakeDuration 0.32`.
+- Umbrales: `brakeTriggerSpeed 110`, `runThreshold 60`, `airStateThreshold 45`.
 
-- El juego usa sprites `*-crop.png` para las poses principales de Mario.
-- `GameScene.jsx` mantiene metricas manuales en `SPRITE_METRICS`.
-- `SPRITE_LAYOUTS` escala cada sprite y conserva el anclaje por pie (`footAnchorX`).
-- El render calcula `currentFootAnchorX`, `playerFootX` y `playerFootY` para que la base del personaje no salte entre estados.
-- `agachar-crop.png` tiene `visualHeight` especial: se renderiza al `60%` de la altura idle mediante `PLAYER_VISUAL.crouchHeightRatio = 0.6`.
-- Los sprites `util1` a `util6` tambien usan metricas en `SPRITE_METRICS` y se animan con `ANIMATION.utilityFrameTime`.
+Reglas importantes:
 
-Si se agrega o reemplaza una pose, actualizar `SPRITE_METRICS` y revisar el anclaje de pie.
+- El jugador acelera con izquierda/derecha y se frena por friccion.
+- El salto solo ocurre en piso y si no esta bloqueado por estados especiales.
+- Agachado ignora input horizontal y no permite saltar hasta soltar abajo.
+- Si cae por debajo de `WORLD.killY`, vuelve al spawn con freno de aterrizaje.
+- El piso se resuelve con `FLOOR_SEGMENTS`, `getFloorSegmentAtFoot` y `standingOnGround`.
+- La camara sigue a Mario con `getCamera` y se limita al mundo.
 
-## Logica actual del personaje
+## Sprites y anclaje visual
 
-Todo esta centralizado en `src/components/GameScene.jsx`.
+Los sprites de Mario usan recortes procesados (`assets/processed/*-crop.png`) y metricas manuales en `SPRITE_METRICS`.
 
-### Estados visuales
+Puntos criticos:
 
-- `Idle`
-- `Corriendo`
-- `Saltando`
-- `Cayendo`
-- `Frenando`
-- `Lanzando`
-- `Agachado`
-- `Muriendo`
-- `Escudo`
+- `SPRITE_LAYOUTS` escala cada pose usando `PLAYER_VISUAL_SCALE`.
+- El render usa `footAnchorX`, `playerFootX` y `playerFootY` para que los pies no salten entre animaciones.
+- `agachar-crop.png` tiene `visualHeight` especial con `PLAYER_VISUAL.crouchHeightRatio = 0.6`.
+- Si se agrega/reemplaza una pose, actualizar `SPRITE_METRICS` y probar el anclaje del pie.
+- El hitbox visible de Mario se calcula desde el layout del sprite actual, no desde la altura completa fija.
 
-### Reglas principales
+Estados visuales de Mario, en prioridad aproximada dentro de `chooseSprite`:
 
-- Si `throwTimer > 0`: usa `lanzar`.
-- Si `dying` es true: usa `morir1`, `morir2`, `morir3`.
-- Si `shieldTimer > 0`: usa `escudo1` rapidamente y luego `escudo2` hasta terminar el escudo.
-- Si la util esta activa antes del gas: usa `util1` a `util6`.
-- Despues de lanzar el gas sigue en util durante 10 segundos, pero vuelve a estados normales y puede lanzar botellas con `P`.
-- Si esta en el aire y sube: usa `saltar`.
-- Si esta en el aire y baja: usa `caer`.
-- Si esta en freno: usa `freno`.
-- Si esta en suelo y `S`/`ArrowDown` esta presionada: usa `agachar`.
-- Si corre en suelo: usa frames de `correr`.
-- Si no hay otra accion: usa frames de `idle`.
-- Mientras esta agachado, el input horizontal se ignora y no puede saltar hasta soltar abajo.
-- Durante el flash y la animacion previa al gas, Mario queda quieto e invulnerable (`player.invulnerable = true`).
-- Justo despues de lanzar el gas, Mario deja de ser invulnerable y puede volver a moverse, saltar, correr o agacharse.
-- Si se presiona `M` o `health <= 0`, se inicia la muerte: bloquea controles, reproduce `morir1`, `morir2`, `morir3` lento, `morir3` dura un poco mas y sube unos pixeles antes del reinicio.
-- Si se presiona `O` y no esta en cooldown, el escudo dura 3 segundos, bloquea correr/saltar y evita dano.
+- `Muriendo`: `morir1`, `morir2`, `morir3`.
+- `Empujado`: `empuje1`, `empuje2`.
+- `Atacado`: `atacado`.
+- `Escudo`: `escudo1`, luego `escudo2`.
+- Util activa antes del gas: `util1` a `util6`.
+- Lanzando: `lanzar`.
+- Aire subiendo: `saltar`.
+- Aire bajando: `caer`.
+- Freno: `freno`.
+- Agachado: `agachar`.
+- Corriendo: `correr1`, `correr2`, `correr3`.
+- Idle: `idle1`, `idle2`.
 
-### Fisica
+## Muerte y reinicio
 
-Constantes principales en `PHYSICS`:
+La muerte se inicia si:
 
-- `gravity`
-- `acceleration`
-- `friction`
-- `maxSpeed`
-- `jumpVelocity`
-- `brakeDuration`
-- `landingBrakeDuration`
-- `brakeTriggerSpeed`
-- `runThreshold`
-- `airStateThreshold`
+- Se presiona `M`.
+- `player.health <= 0`.
 
-La colision contra piso se resuelve con:
+Flujo actual:
 
-- `FLOOR`
-- `FLOOR_SEGMENTS`
-- `floorSurfaceY`
-- `getFloorSegmentAtFoot`
-- `standingOnGround`
+- `startDeath(player)` bloquea acciones, limpia timers de util/lanzamiento/escudo/empujon/dano y deja a Mario quieto.
+- `DEATH.frameDurations` reproduce `morir1`, `morir2`, `morir3` lento.
+- Al entrar al ultimo frame, Mario sube `DEATH.riseDistance` pixeles.
+- Al terminar la animacion, Mario vuelve a `createInitialPlayer()` con freno de aterrizaje.
+- Se limpian pizzas, proyectiles de util y proyectiles enemigos mediante `resetProjectiles`.
+- Si el boss estaba activo, ya habia entrado y estaba en combate, no se reinicia inmediatamente: se llama `startEnemyCelebration`.
+- La celebracion del boss usa `celebrating_walk` hacia la posicion donde murio Mario y luego `celebrating_talk` con el texto `Soy el exploid supremo padre!`.
+- Al terminar el texto y el hold de celebracion, `enemy.shouldResetGame = true` y el loop llama `resetGame()`.
+- Si el boss no estaba en condiciones de celebrar, el enemigo se reinicia directamente.
 
-### Hitboxes
+Esta parte es sensible: no cambiar `resetProjectiles`, `enemyIsCelebrating`, `enemyShouldCelebrate` o `shouldResetGame` sin probar el flujo completo de muerte.
 
-- Las hitboxes visibles se pueden activar o desactivar desde `Ajustes` en el menu de pausa.
-- El hitbox visible de Mario se calcula desde el sprite actual, no desde una caja fija completa.
-- Al correr, saltar, caer o agacharse, el rectangulo azul sigue la altura visual renderizada.
-- Las pizzas tienen hitbox propio con `PIZZA.hitboxWidth` y `PIZZA.hitboxHeight`.
-- El gas de la util tiene hitbox verde y `damage: 5`.
-- Las botellas de la util tienen hitbox rosa y `damage: 2`.
-- Esos hitboxes son reales para colisionar contra el enemigo documento.
+## Vida, dano y estado atacado
 
-## HUD y menu
-
-HUD:
-
-- Vida con `heartIcon`.
-- Municion con `pizzaIcon`.
-- Boton de menu a la izquierda del HUD.
-
-Menu de pausa:
-
-- Al abrirse, pausa el loop del juego.
-- Resetea las teclas presionadas para evitar movimiento pegado al cerrar.
-- Aplica blur, saturacion y oscurecimiento al mundo.
-- Tiene animacion de entrada/salida.
-- Opciones:
-  - `Continuar`
-  - `Como jugar`
-  - `Ajustes`
-  - `Reiniciar`
-- Ajustes actuales:
-  - Mostrar/ocultar hitboxes.
-  - Activar/desactivar animacion suave del menu.
-
-## Pizzas
-
-- `P` lanza una pizza si hay municion y no hay cooldown.
-- Cada pizza lanzada lleva `damage: 1`.
-- Las pizzas usan `getPizzaHitbox` para golpear al enemigo y desaparecen al impactar.
-- La pizza tiene gravedad propia, rebota una vez contra el suelo y luego desaparece.
-- La municion se regenera con `PIZZA.regenTime`.
-
-## Util
-
-- Se activa con `G` si hay al menos 1 carga de botella.
-- Maximo de cargas: `UTILITY.maxCharges = 2`.
-- Cada carga se recupera en `UTILITY.chargeRegenTime = 120` segundos.
-- La carga se descuenta al activar la util; desde ahi empieza a contar la recuperacion.
-- Antes de la animacion hay 4 segundos de pantallazos blanco/rosa (`UTILITY.flashDuration = 4`).
-- Despues entra en fase activa hasta lanzar el gas.
-- Durante flash y fase activa previa al gas, Mario queda inmovil e invulnerable.
-- La animacion lenta usa `util1` a `util6`.
-- En `util6` se lanza una sola vez `vomitoGas`, desde altura de boca, con `damage: 5`.
-- Justo despues de lanzar el gas, Mario pasa a `freno`, deja de ser inmune y vuelve a los estados normales.
-- Despues del gas, la util sigue 10 segundos (`UTILITY.postGasDuration = 10`), mantiene los rayos y permite lanzar cualquier cantidad de botellas con `P`; cada botella tiene `damage: 2`.
-- Gas y botellas usan `getUtilityProjectileHitbox` para golpear al enemigo y desaparecen al impactar.
-- Durante esos 10 segundos post-gas Mario ya no esta bloqueado: puede correr, saltar, agacharse y recibir dano.
-- Durante toda la fase activa Mario muestra rayos animados rosas y amarillos sin hitbox.
-- Proyectiles de util se guardan en `utilityProjectiles` y se actualizan con `stepUtilityProjectiles`.
-
-## Muerte
-
-- Se fuerza con `M`.
-- Tambien se dispara cuando `player.health <= 0`.
-- Usa `DEATH.frameDurations` para reproducir `morir1`, `morir2` y `morir3` lento.
-- `morir3` dura mas y al entrar en ese frame el personaje sube `DEATH.riseDistance` pixeles.
-- Durante la muerte no hay control, no hay util, no hay lanzamiento y Mario queda quieto.
-- Al terminar, se reinicia el jugador con `createInitialPlayer()`, se suma `deaths` y se limpian pizzas/proyectiles de util.
+- La vida de Mario se muestra con 5 corazones.
+- `visibleHearts = Math.ceil(clamp(sceneState.health, 0, PLAYER.health))`.
+- Los proyectiles enemigos restan `projectile.damage`; la bola del documento hace `1`.
+- `triggerPlayerHurt` muestra `atacado-crop.png` durante `HURT.duration = 0.34`.
+- Si Mario esta invulnerable, no recibe dano ni se pisa la animacion especial.
 
 ## Escudo
 
-- Se activa con `O`.
-- Dura maximo `SHIELD.duration = 3` segundos.
-- Si el usuario suelta `O`, el escudo se desactiva de inmediato.
-- Tiene cooldown de `SHIELD.cooldown = 9` segundos.
-- Mientras esta activo, Mario queda inmune (`invulnerable = true`), quieto y no puede correr ni saltar.
-- La animacion empieza rapido con `escudo1` (`SHIELD.introDuration`) y luego mantiene `escudo2`.
-- Al terminar vuelve al estado normal que corresponda segun input/fisica.
+- Se activa con `O` si `shieldCooldown <= 0`.
+- Dura como maximo `SHIELD.duration = 3` segundos.
+- Si se suelta `O`, termina antes.
+- Cooldown: `9` segundos.
+- Mientras esta activo, Mario queda quieto e invulnerable.
+- Visual: `escudo1` durante `SHIELD.introDuration = 0.22`, luego `escudo2`.
 
-## Enemigo documento
+## Pizzas
 
-- Asset original: `assets/docuemenemigo/caminar/caminar.png`.
-- El PNG contiene dos poses; se separaron en:
-  - `assets/processed/docuemenemigo-caminar1-crop.png`
-  - `assets/processed/docuemenemigo-caminar2-crop.png`
-- Idle original:
-  - `assets/docuemenemigo/idle/idel_doc_2.png`
-- Idle procesado:
-  - `assets/processed/docuemenemigo-idle2-crop.png`
-- Hablar original:
-  - `assets/docuemenemigo/hablar/hablar_doc.png`
-- Hablar procesado:
-  - `assets/processed/docuemenemigo-hablar1-crop.png`
-  - `assets/processed/docuemenemigo-hablar2-crop.png`
-- Muerte original:
-  - `assets/docuemenemigo/muerte de hoja/muerte_doc.png`
-- Muerte procesada:
-  - `assets/processed/docuemenemigo-muerte1-crop.png`
-  - `assets/processed/docuemenemigo-muerte2-crop.png`
-  - `assets/processed/docuemenemigo-muerte3-crop.png`
-  - `assets/processed/docuemenemigo-muerte4-crop.png`
-- Los frames procesados de muerte estan reescalados contra el area visual del idle (`575x667`) para evitar que el documento se vea mas pequeno al morir.
-- Acciones de combate procesadas y escaladas contra el idle:
-  - `assets/processed/docuemenemigo-saltar-crop.png`
-  - `assets/processed/docuemenemigo-agachar-crop.png`
-  - `assets/processed/docuemenemigo-stuneado-crop.png`
-  - `assets/processed/docuemenemigo-atras-crop.png`
-  - `assets/processed/docuemenemigo-tirar-crop.png`
-  - `assets/processed/docuemenemigo-bola-crop.png`
-- Tiene `ENEMY.health = 100`.
-- Se renderiza a `1.3x` la altura de Mario.
-- Usa `ENEMY.groundSink` para bajarlo visualmente y que no parezca flotar.
-- Su contenedor visual es amplio (`ENEMY.width = 350`) para que el idle conserve proporcion.
-- Su hitbox real es mas angosto (`ENEMY.hitboxWidth = 210`) y centrado dentro del contenedor para quedar pegado al cuerpo.
-- `.enemy-sprite img` se posiciona absoluto con `inset: 0`, `height: 100%`, `object-fit: contain` y `max-width: none`; sin esto el idle vertical usa su proporcion natural y puede salirse por abajo.
-- Aparece a la derecha cuando Mario se mueve desde el spawn.
-- Entra caminando hacia la izquierda alternando los dos frames y luego pasa a hablar.
-- En modo hablar alterna suavemente `docuemenemigo-hablar1-crop.png` y `docuemenemigo-hablar2-crop.png`.
-- Durante el habla muestra texto arriba con estilo `Courier New` y efecto maquina de escribir.
-- Mientras habla no recibe dano; despues de hablar entra en FSM de combate y puede recibir dano en sus estados de pelea.
-- Dos segundos despues de terminar el texto vuelve a idle.
-- En idle usa solo `assets/processed/docuemenemigo-idle2-crop.png`, sin transicion ni alternancia.
-- La IA de combate vive como hook React en `src/hooks/useBossAI.js` y se usa desde `GameScene` con `useBossAI()`.
-- FSM del boss: `idle`, `chase`, `keep_distance`, `throw_attack`, `retreat`, `dodge`, `airborne`, `stunned`.
-- Controla distancia: persigue si esta lejos, mantiene distancia optima y ataca con bolas de papel, retrocede o esquiva si Mario esta muy cerca.
-- Esquiva con reaccion aleatoria: agacharse reduce el hitbox al 50%, saltar evita amenazas bajas y salto hacia atras sirve como escape.
-- Si Mario se aproxima demasiado (`AI.closeActionDistance`), el boss decide con cooldown entre salto hacia atras largo o empujar a Mario.
-- El salto hacia atras mantiene velocidad de escape hasta llegar a la distancia segura (`AI.closeEscapeTargetDistance`) y luego vuelve a `keep_distance`.
-- El empujon se aplica en `applyBossPushToPlayer`: Mario se separa hasta `AI.shoveTargetDistance = 930`, que es 1.5x la distancia segura base.
-- El empujon activa una animacion horizontal de `2s`: `empuje1-crop.png` durante el desplazamiento y `empuje2-crop.png` al detenerse; ambos usan la misma escala global que los frames de correr (`PLAYER_VISUAL_SCALE`) y despues vuelve al idle normal.
-- Durante el empujon Mario queda pegado al piso (`floorSurfaceY - PLAYER.height`), sin impulso vertical.
-- Cuando Mario recibe dano enemigo real, `triggerPlayerHurt` activa `atacado-crop.png` brevemente (`HURT.duration = 0.34`); no se activa si esta invulnerable y no pisa la animacion especial de empujon.
-- Despues de escapar o empujar, el boss acorta un poco su cooldown/decision de ataque para poder lanzar proyectiles desde esa zona segura.
-- El boss no esquiva siempre: `useBossAI` usa probabilidad, delay de reaccion y cooldown para que cometa errores.
-- `tirar_doc` prepara el disparo y luego genera proyectil `docuemenemigo-bola-crop.png`.
-- `docuemenemigo-tirar-crop.png` esta reescalado por el cuerpo del documento para que la figura interna coincida con el tamano del idle.
-- Solo `docuemenemigo-tirar-crop.png` usa un lienzo mas ancho (`900x690`) para que el brazo extendido quede visible fuera del hitbox normal del cuerpo sin ampliar la colision del enemigo.
-- Los proyectiles del boss usan `enemyProjectilesRef` / `enemyProjectiles`, tienen hitbox visible `.enemy-projectile-hitbox` y pueden quitar vida a Mario si no esta invulnerable.
-- Cuando los proyectiles del boss hacen dano, restan `projectile.damage` directo a `player.health`; el HUD oculta los corazones vacios con `.heart-row img.heart-empty`.
-- La bola del documento usa `ENEMY_BALL.hitboxWidth = 54` y `ENEMY_BALL.hitboxHeight = 54`, centrados sobre el sprite de `58x58`.
-- El gas de la util puede poner al boss en `stunned`.
-- Tiene hitbox visible cuando `showHitboxes` esta activo.
-- El hitbox visible tambien es su hitbox real para recibir dano.
-- Recibe dano de pizzas (`1`), gas (`5`) y botellas de util (`2`).
-- Cuando su vida llega a `0`, entra en `mode = 'dying'`, reproduce los cuatro frames de muerte de izquierda a derecha con `ENEMY.deathFrameTime = 1.4` y luego desaparece (`active = false`, `defeated = true`).
-- Al desaparecer, Mario muestra sobre su cabeza durante `8s`: `Ese documento no estaba bien formateado, hora de ir por unas pizzas`.
-- Mario y el enemigo no pueden solaparse: `resolvePlayerEnemyCollision` separa los hitboxes horizontalmente y corta la velocidad de Mario.
-- Su barra de vida aparece a la derecha del HUD, a la misma altura que el HUD de Mario.
+Constantes principales:
 
-## Arquitectura actual
+- `PIZZA.damage = 1`.
+- `PIZZA.speed = 720`.
+- `PIZZA.gravity = 220`.
+- `PIZZA.maxBounces = 1`.
+- `PIZZA.regenTime = 5`.
 
-- Un componente principal: `GameScene`.
-- Estado de alta frecuencia en refs (`playerRef`, `keysRef`, `isPausedRef`).
-- Estado visible en React (`sceneState`, `pizzas`, menu, ajustes).
-- Proyectiles de util visibles en React (`utilityProjectiles`).
-- Proyectiles del boss visibles en React (`enemyProjectiles`).
-- `pizzasRef`, `utilityProjectilesRef` y `enemyProjectilesRef` son la fuente runtime para colisiones.
-- Estado visible del enemigo (`enemyState`) con fuente en `enemyRef`.
-- Loop con `requestAnimationFrame`.
-- `startTransition` para actualizaciones visuales.
-- Input por listeners globales de teclado.
+Reglas:
 
-## Decisiones importantes ya tomadas
+- `P` lanza pizza si hay ammo y cooldown disponible.
+- Cada pizza desaparece al impactar contra el boss.
+- Rebota una vez contra el piso y luego desaparece.
+- La municion se regenera con timer propio.
+- Hitbox real por `getPizzaHitbox`.
 
-- La escena ocupa toda la pantalla.
-- El primer viewport es directamente el juego, sin landing page.
-- El HUD se mantiene dentro de la escena escalada.
-- El suelo actual es una plataforma grande.
-- El personaje se ancla por pie para evitar saltos visuales entre sprites.
-- El estado agachado mide 60% de la altura idle y su hitbox sigue esa escala.
-- La util usa dos espacios de botellas debajo del marcador de municion; las cargas vacias se ven apagadas.
-- Cuando se activa una util se descuenta una botella del HUD y se activa la regeneracion.
+## Util
 
-## Que revisar si otro agente continua
+Constantes principales:
 
-### Si va a tocar animaciones o sprites
+- `UTILITY.maxCharges = 2`.
+- `UTILITY.chargeRegenTime = 120`.
+- `UTILITY.flashDuration = 4`.
+- `UTILITY.gasLaunchTime = 2.55`.
+- `UTILITY.postGasDuration = 10`.
+- `UTILITY.bottleCooldown = 0.38`.
 
-Revisar:
+Flujo:
 
-- Imports de sprites al inicio de `GameScene.jsx`.
-- `SPRITE_METRICS`
-- `SPRITE_LAYOUTS`
-- `getSpriteLayout`
-- `chooseSprite`
-- Calculo de `currentFootAnchorX`
-- Calculo del hitbox visual cerca de `visualHitboxTop`
+- `G` consume una carga y entra en fase `flash`.
+- Durante `flash` y la animacion previa al gas, Mario queda inmovil e invulnerable.
+- Despues entra en `active`, anima `util1` a `util6` y lanza una vez `vomitoGas`.
+- El gas hace `GAS.damage = 5`, viaja horizontalmente y puede stunear al boss con `stunBoss`.
+- Tras lanzar el gas, Mario deja de ser invulnerable y vuelve a moverse.
+- La fase activa sigue `10` segundos con aura/rayos; durante ese tiempo `P` lanza botellas.
+- Cada botella hace `BOTTLE.damage = 2`.
+- Gas y botellas usan `utilityProjectilesRef` y `utilityProjectiles`.
 
-Si no se respeta el anclaje por pie, Mario puede deformarse o saltar de posicion entre poses.
+## Boss documento
 
-### Si va a tocar fisica
+El enemigo se crea en `createInitialEnemy()` con:
 
-Revisar:
+- Estado base de IA desde `createBossAIState()`.
+- `active: false`, `entered: false`, `mode: 'waiting'`.
+- Vida `100`.
+- `facing: -1`.
+- Sprite inicial `docuemenemigo-idle2-crop.png`.
+- Flags de celebracion y reset (`celebrationTargetX`, `celebrationTalkTimer`, `shouldResetGame`).
 
-- `stepPlayer`
-- `standingOnGround`
-- `jumpQueued`
-- `keys.down`
-- `keys.utilityQueued`
-- `crouching`
-- `utilityPhase`
-- `invulnerable`
-- `shieldTimer`
-- `shieldCooldown`
-- `landingBrakeDuration`
-- `getCamera`
+Aparicion y fases:
 
-### Si va a agregar plataformas
+- Aparece cuando Mario se mueve mas de `ENEMY.triggerDistance = 24` desde el spawn.
+- Spawnea a la derecha usando `spawnDistance = 840` y camina hasta `stopDistance = 560`.
+- Entra en `talking` y muestra texto con efecto maquina de escribir.
+- Mientras camina/habla/celebra/muere no es vulnerable.
+- Al terminar de hablar, entra a la FSM de combate.
 
-La colision ya usa `FLOOR_SEGMENTS`, pero ahora solo hay un segmento enorme:
+IA en `useBossAI.js`:
 
-```js
-const FLOOR_SEGMENTS = [
-  { x: -120, width: WORLD.width + 240 },
-]
-```
+- Estados: `idle`, `chase`, `keep_distance`, `throw_attack`, `retreat`, `dodge`, `airborne`, `stunned`.
+- Mantiene distancia optima, persigue si esta lejos y retrocede si esta cerca.
+- Lanza bolas de papel con preparacion y cooldown desde estados de suelo (`chase`, `keep_distance`, `retreat`), asi que puede disparar desde distintas distancias.
+- La frecuencia de disparo es relativamente alta: `attackCooldownMin = 1.05`, `attackCooldownMax = 2`, `attackChance = 0.78`.
+- Detecta amenazas entrantes y puede agacharse, saltar o saltar hacia atras.
+- Usa azar, delay de reaccion y cooldown para no esquivar perfecto siempre.
+- Si Mario esta demasiado cerca, puede hacer salto largo hacia atras o empujar a Mario.
+- El gas de la util llama `stunBoss`, llevando al estado `stunned`.
 
-Para multiples plataformas, conviene ampliar esa lista y resolver colisiones verticales con la plataforma mas cercana bajo el personaje.
+Combate y colisiones:
 
-### Si va a tocar menu/HUD
+- Hitbox real del boss: `getEnemyHitbox`.
+- Si esta agachado o en `BOSS_STATES.DODGE`, el hitbox baja al 50% de altura.
+- Recibe dano de pizzas, gas y botellas con `applyEnemyProjectileHits`.
+- Al llegar a `health <= 0`, entra en `mode = 'dying'`, reproduce 4 frames de muerte y luego queda `active = false`, `defeated = true`, `mode = 'dead'`.
+- Al derrotarlo, Mario muestra por `8s`: `Ese documento no estaba bien formateado, hora de ir por unas pizzas`.
+- `resolvePlayerEnemyCollision` evita que Mario y el boss se solapen.
+- `applyBossPushToPlayer` ejecuta el empujon del boss sobre Mario.
 
-Revisar:
+Proyectiles del boss:
 
-- Estados `isMenuOpen`, `activeMenuPanel`, `showHitboxes`, `reducedMenuMotion`.
-- `openMenu`, `closeMenu`, `resetGame`.
-- CSS de `.game-menu-button`, `.pause-overlay`, `.pause-menu` y `.menu-is-open`.
+- Sprite: `docuemenemigo-bola-crop.png`.
+- Tamano `29 x 29`, hitbox `27 x 27` (50% del tamano anterior).
+- Dano `1`.
+- Velocidad horizontal inicial `315`.
+- Apuntan hacia una posicion anticipada de Mario usando su posicion y velocidad (`aimLeadFactor = 0.58`).
+- Tienen 30% de probabilidad de fallar el apuntado (`aimMissChance = 0.3`) con desvio aleatorio en X/Y.
+- Usan gravedad `720`, rebotan contra el piso hasta `3` veces y pierden velocidad horizontal en cada rebote.
+- Lifetime `4.6` segundos.
+- Se guardan en `enemyProjectilesRef` y `enemyProjectiles`.
 
-### Si va a tocar enemigos
+## HUD, menu y ajustes
 
-Revisar:
+HUD:
 
-- `ENEMY`
-- `createInitialEnemy`
-- `stepEnemy`
-- `src/hooks/useBossAI.js`
-- `applyBossPushToPlayer`
-- `getEnemyHitbox`
-- `getPlayerHitbox`
-- `resolvePlayerEnemyCollision`
-- `applyEnemyProjectileHits`
-- `applyEnemyProjectilesToPlayer`
-- `enemyRef` / `enemyState`
-- Render de `.enemy-sprite`, `.enemy-hitbox`, `.enemy-projectile` y `.enemy-health-hud`
+- Corazones: `heartIcon`.
+- Pizzas disponibles: `pizzaIcon`.
+- Cargas de util: `bottleIcon` procesado.
+- Barra de vida del boss aparece si `enemyState.active`.
+- El boton de menu esta dentro de la escena escalada.
 
-## Pendiente / posibles siguientes pasos
+Menu de pausa:
 
-1. Ajustar balance de la IA del documento enemigo: dano, velocidad, cooldowns y probabilidades.
-2. Agregar niveles, plataformas y objetivos.
-3. Agregar collectibles o datos perdidos como objetivo del juego.
-4. Mejorar colisiones para plataformas multiples.
-5. Agregar sonido.
-6. Agregar efectos o sonido a disparos, esquivas, stun y muerte del boss.
+- `Continuar`.
+- `Como jugar`.
+- `Ajustes`.
+- `Reiniciar`.
 
-## Verificacion hecha recientemente
+Ajustes:
 
-Se verifico:
+- Mostrar/ocultar hitboxes. Nota: `showHitboxes` inicia en `true` actualmente.
+- Activar/desactivar animacion suave del menu.
 
-- `npm run lint`
-- `npm run build`
-- Prueba visual en navegador del menu de pausa.
-- Prueba visual del estado agachado manteniendo `S`.
-- Prueba visual del favicon/titulo.
-- Prueba visual de la util: `G`, flash, fase activa y gas.
+Al abrir el menu:
 
-## Observacion final
+- `isPausedRef.current = true`.
+- Se limpian teclas.
+- Se aplica blur/saturacion/oscuridad al mundo.
 
-El `README.md` puede conservar contenido viejo de Vite y no debe tomarse como fuente principal de verdad.
+## Assets realmente importados por el juego
 
-Para continuar el proyecto, usar este archivo como contexto principal:
+Entorno:
 
-- `AGENT_HANDOFF.md`
+- `assets/Entorno/oficina/fondo.png`.
+- `assets/Entorno/oficina/fondo1.png`.
+- `assets/Entorno/oficina/piso.png`.
+
+HUD/proyectiles originales:
+
+- `assets/Mario/atributos/corazon.png`.
+- `assets/Mario/atributos/pizza.png`.
+- `assets/Mario/atributos/lanzar.png`.
+- `assets/Mario/atributos/pizzalanzada.png`.
+
+Mario procesado:
+
+- `assets/processed/idle1-crop.png`.
+- `assets/processed/idle2-crop.png`.
+- `assets/processed/freno-crop.png`.
+- `assets/processed/correr1-crop.png`.
+- `assets/processed/correr2-crop.png`.
+- `assets/processed/correr3-crop.png`.
+- `assets/processed/saltar-crop.png`.
+- `assets/processed/caer-crop.png`.
+- `assets/processed/agachar-crop.png`.
+- `assets/processed/morir1-crop.png`.
+- `assets/processed/morir2-crop.png`.
+- `assets/processed/morir3-crop.png`.
+- `assets/processed/escudo1-crop.png`.
+- `assets/processed/escudo2-crop.png`.
+- `assets/processed/empuje1-crop.png`.
+- `assets/processed/empuje2-crop.png`.
+- `assets/processed/atacado-crop.png`.
+- `assets/processed/util1-crop.png` a `util6-crop.png`.
+- `assets/processed/vomitoGas-crop.png`.
+- `assets/processed/Botellas-crop.png`.
+
+Boss procesado:
+
+- `assets/processed/docuemenemigo-caminar1-crop.png`.
+- `assets/processed/docuemenemigo-caminar2-crop.png`.
+- `assets/processed/docuemenemigo-idle2-crop.png`.
+- `assets/processed/docuemenemigo-hablar1-crop.png`.
+- `assets/processed/docuemenemigo-hablar2-crop.png`.
+- `assets/processed/docuemenemigo-muerte1-crop.png` a `docuemenemigo-muerte4-crop.png`.
+- `assets/processed/docuemenemigo-saltar-crop.png`.
+- `assets/processed/docuemenemigo-agachar-crop.png`.
+- `assets/processed/docuemenemigo-stuneado-crop.png`.
+- `assets/processed/docuemenemigo-tirar-crop.png`.
+- `assets/processed/docuemenemigo-bola-crop.png`.
+
+Existen mas assets originales/procesados en el repo (`fondo2`, `personas`, `bloque1`, `docuemenemigo-idle1-crop`, `docuemenemigo-atras-crop`, etc.), pero actualmente no estan importados por `GameScene.jsx`.
+
+## CSS relevante
+
+- `.game-scene`: pantalla completa, fondo base oscuro y overlay de color.
+- `.game-world`: escena logica escalada; en mobile puede alinearse a la izquierda.
+- `.parallax-layer`: fondos repetidos horizontalmente.
+- `.world-entities`: capa donde se renderizan piso, personajes y proyectiles.
+- `.player-sprite`, `.enemy-sprite`: render visual de personajes.
+- `.player-hitbox`, `.enemy-hitbox`, `.pizza-hitbox`, `.utility-hitbox`, `.enemy-projectile-hitbox`: debug visual de colisiones.
+- `.utility-flash-screen`: parpadeo de util.
+- `.utility-aura`: rayos alrededor de Mario durante util activa.
+- `.health-hud`, `.enemy-health-hud`: HUD.
+- `.pause-overlay`, `.pause-menu`: menu de pausa.
+
+## Zonas delicadas para futuros cambios
+
+Si se toca animacion/sprites:
+
+- Revisar imports de sprites.
+- Actualizar `SPRITE_METRICS`.
+- Probar `currentFootAnchorX`, `playerFootX`, `playerFootY`.
+- Probar hitbox visible con `showHitboxes`.
+
+Si se toca fisica/plataformas:
+
+- Revisar `stepPlayer`, `standingOnGround`, `getFloorSegmentAtFoot`, `FLOOR_SEGMENTS`, `getCamera`.
+- Para multiples plataformas, no basta con sumar segmentos: conviene resolver colision vertical contra la plataforma mas cercana debajo del jugador.
+
+Si se toca muerte/reinicio:
+
+- Revisar `startDeath`, `stepPlayer`, `resetProjectiles`, `startEnemyCelebration`, `enemyShouldCelebrate`, `enemyIsCelebrating`, `nextEnemy.shouldResetGame` y `resetGame`.
+- Probar muerte con `M` antes y despues de que el boss entre en combate.
+
+Si se toca el boss:
+
+- Revisar `ENEMY`, `createInitialEnemy`, `stepEnemy`, `useBossAI.js`, `applyEnemyProjectileHits`, `applyEnemyProjectilesToPlayer`, `resolvePlayerEnemyCollision`, `applyBossPushToPlayer`.
+- Cuidar que `stepEnemy` setea `enemy.thrownEnemyProjectiles = []` por frame.
+
+Si se toca menu/HUD:
+
+- Revisar `openMenu`, `closeMenu`, `resetGame`, `isPausedRef`, `activeMenuPanel`, `showHitboxes`, `reducedMenuMotion`.
+- Probar teclado despues de cerrar menu.
+
+## Pendientes razonables
+
+1. Balancear IA del boss: cooldowns, dano, chances de esquiva y distancia optima.
+2. Agregar sonido a salto, lanzamiento, dano, escudo, util, muerte y boss.
+3. Agregar objetivo jugable: recolectables, niveles o final de escena.
+4. Mejorar sistema de plataformas multiples.
+5. Persistir estadisticas si se quiere usar `deaths` como contador real.
+6. Pasar parte de `GameScene.jsx` a modulos si crece mas: constantes, sprites, fisica, proyectiles y render HUD.
+
+## Nota final
+
+Usar este archivo como contexto principal del repo. Si hay duda, verificar contra `src/components/GameScene.jsx` y `src/hooks/useBossAI.js`, que son la fuente real del comportamiento actual.

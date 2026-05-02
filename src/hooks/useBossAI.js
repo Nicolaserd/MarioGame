@@ -40,9 +40,9 @@ const AI = {
   farDistance: 850,
   attackPrepareTime: 0.58,
   attackDuration: 0.94,
-  attackCooldownMin: 1.85,
-  attackCooldownMax: 3.25,
-  attackChance: 0.6,
+  attackCooldownMin: 1.05,
+  attackCooldownMax: 2,
+  attackChance: 0.78,
   driftChance: 0.32,
   decisionMin: 0.34,
   decisionMax: 0.78,
@@ -516,12 +516,17 @@ function updateGroundMovement(boss, playerCenterX, distance, dt) {
   boss.vx = 0
 }
 
-function maybeAttack(boss, distance) {
+function maybeAttack(boss) {
+  const canThrowFromState = [
+    BOSS_STATES.CHASE,
+    BOSS_STATES.KEEP_DISTANCE,
+    BOSS_STATES.RETREAT,
+  ].includes(boss.aiState)
+
   if (
-    boss.aiState !== BOSS_STATES.KEEP_DISTANCE ||
+    !canThrowFromState ||
     boss.attackCooldown > 0 ||
-    distance < AI.optimalMinDistance ||
-    distance > AI.optimalMaxDistance
+    !boss.onGround
   ) {
     return false
   }
@@ -632,7 +637,7 @@ export function updateBossAI(boss, player, projectiles, deltaTime) {
 
   chooseDistanceState(boss, playerCenterX, distance)
 
-  if (maybeAttack(boss, distance)) {
+  if (maybeAttack(boss)) {
     updateThrow(boss, dt)
     applyPhysics(boss, dt)
     return boss
