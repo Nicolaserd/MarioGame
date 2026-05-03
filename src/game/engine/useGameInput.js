@@ -59,10 +59,6 @@ export function useGameInput({ keysRef, isPausedRef, onOpenMenu, onCloseMenu }) 
         return
       }
 
-      if (event.repeat) {
-        return
-      }
-
       if (
         event.key === 'ArrowLeft' ||
         event.code === 'ArrowLeft' ||
@@ -91,7 +87,9 @@ export function useGameInput({ keysRef, isPausedRef, onOpenMenu, onCloseMenu }) 
           event.code === 'KeyW')
       ) {
         event.preventDefault()
-        keysRef.current.jumpQueued = true
+        if (!event.repeat) {
+          keysRef.current.jumpQueued = true
+        }
       }
 
       if (

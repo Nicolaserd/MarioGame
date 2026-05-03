@@ -9,10 +9,13 @@
   onSetShowHitboxes,
   onSetReducedMotion,
 }) {
+  if (!isOpen) {
+    return null
+  }
+
   return (
     <div
       className="pause-overlay"
-      aria-hidden={!isOpen}
       onClick={(event) => {
         if (event.target === event.currentTarget) {
           onClose()
