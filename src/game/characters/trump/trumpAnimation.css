@@ -1,0 +1,17 @@
+.tower-boss .trump-frames {
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  left: -53px;
+  bottom: -7px;
+  overflow: visible;
+  transform-origin: 50% 97%;
+  filter: drop-shadow(0 4px 3px #19101c55);
+}
+.trump-frames.pose-windup.power-contract { filter: drop-shadow(0 0 5px #d5eeff99); }
+.trump-frames.pose-windup.power-gold { filter: drop-shadow(0 0 6px #ffd26caa); }
+.trump-frames.pose-windup.power-wall { filter: drop-shadow(0 0 5px #e7a77499); }
+.trump-frames.pose-angry { filter: drop-shadow(0 0 6px #e05a3c88); }
+.tower-boss .trump-frames.is-hit { filter: brightness(1.65) drop-shadow(0 0 5px #fff); }
+/* The atlas advances via simulation time, including pause and final-pose hold.
+   No extra shaking/flashing is added, including in reduced-motion mode. */

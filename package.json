@@ -3,25 +3,35 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "packageManager": "pnpm@12.3.4",
+  "engines": {
+    "node": ">=24.0.0 <25",
+    "pnpm": "12.3.4"
+  },
   "scripts": {
+    "preinstall": "node scripts/require-pnpm.mjs",
+    "check:versions": "node scripts/check-versions.mjs",
+    "check:docs": "node scripts/check-docs.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "check:security": "pnpm audit --audit-level=low",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "6.1.1",
     "eslint": "^10.2.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.5.0",
-    "vite": "^8.0.10"
+    "vite": "8.2.2"
   }
 }

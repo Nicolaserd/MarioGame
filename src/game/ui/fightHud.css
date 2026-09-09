@@ -1,0 +1,21 @@
+.fight-hud { position: absolute; top: 20px; left: 26px; right: 26px; z-index: 12; display: grid; grid-template-columns: 1fr 58px 1fr; align-items: start; gap: 14px; color: #fff4df; font-family: Arial, sans-serif; pointer-events: none; filter: drop-shadow(0 3px 8px #0009); }
+.fight-side { min-width: 0; padding: 9px 12px 8px; background: linear-gradient(100deg,#151a23ed,#24272ed9); border-top: 2px solid #e7ca8c; border-bottom: 1px solid #e7ca8c44; }
+.fight-name { display: flex; align-items: baseline; gap: 8px; padding-bottom: 7px; white-space: nowrap; }
+.fight-name > span { color: #bfab88; font: 8px monospace; letter-spacing: 1px; }
+.fight-name strong { font-size: 15px; font-weight: 900; text-transform: uppercase; letter-spacing: .5px; overflow: hidden; text-overflow: ellipsis; }
+.fight-name > small { margin-left: auto; font: 10px monospace; }
+.fight-track { height: 13px; background: #080b10; border: 1px solid #ffffff26; padding: 2px; transform: skewX(-12deg); overflow: hidden; }
+.fight-fill { height: 100%; background: linear-gradient(90deg,#998044,#f4dc9c); box-shadow: 0 0 12px #f4dc9c44; transition: width 120ms ease-out; }
+.fight-enemy .fight-fill { margin-left: auto; background: linear-gradient(90deg,#edac82,#b9524b); }
+.fight-resources { height: 24px; display: flex; align-items: center; gap: 14px; padding-top: 5px; }
+.fight-resource { display: flex; align-items: center; gap: 5px; font-size: 8px; letter-spacing: .4px; }
+.fight-resource img { width: 20px; height: 16px; object-fit: contain; }.fight-resource strong { color: #ffe4ad; font: bold 13px monospace; }.fight-resource small { color: #9a9da7; font-size: 9px; }
+.fight-heart { width: 15px; height: 15px; object-fit: contain; margin-left: auto; }
+.fight-round { pointer-events: auto; display: flex; flex-direction: column; align-items: center; width: 58px; padding: 7px 0 4px; color: #efd498; border: 1px solid #bca17277; background: #141b27e8; cursor: pointer; }
+.fight-round small { font: 8px monospace; letter-spacing: 1px; }.fight-round strong { font: bold 29px/1.2 Georgia,serif; }.fight-round span { font-size: 9px; color: #b8b9bf; }
+.fight-round:hover { background: #394051; }.fight-round:focus-visible { outline: 2px solid #ffe2a4; outline-offset: 3px; }
+.fight-opponent-note { color: #b6a99b; font: 8px monospace; letter-spacing: 1px; padding-top: 11px; text-align: right; }
+.pause-overlay.is-visible { opacity: 1; pointer-events: auto; background: #101720b8; backdrop-filter: blur(5px); }
+.pause-overlay.is-visible .pause-menu { opacity: 1; transform: none; background: linear-gradient(135deg,#273345,#151c28); border-color: #c9ab71; }
+.chapter-transition { position: absolute; z-index: 14; left: 50%; bottom: 7%; transform: translateX(-50%); padding: 16px 40px; color: #f4d697; text-align: center; background: #151c28e8; border: 1px solid #c9ab71; font-family: Arial,sans-serif; pointer-events: none; }
+.chapter-transition span,.chapter-transition small { display: block; font: 10px monospace; letter-spacing: 2px; }.chapter-transition strong { display: block; font-size: 26px; margin: 6px 0; text-transform: uppercase; }

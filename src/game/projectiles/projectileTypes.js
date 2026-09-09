@@ -19,7 +19,7 @@ export const PIZZA = {
 }
 
 export const UTILITY = {
-  maxCharges: 2,
+  maxCharges: 3,
   chargeRegenTime: 120,
   flashDuration: 4,
   gasLaunchTime: 2.55,

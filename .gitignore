@@ -17,6 +17,7 @@ coverage
 # Local QA artifacts
 .playwright-cli/
 output/playwright/
+.playwright-mcp/
 
 # Editor directories and files
 .vscode/*

@@ -15,7 +15,7 @@
 
   return (
     <div
-      className="pause-overlay"
+      className="pause-overlay is-visible"
       onClick={(event) => {
         if (event.target === event.currentTarget) {
           onClose()

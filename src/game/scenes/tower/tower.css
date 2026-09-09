@@ -1,0 +1,54 @@
+.tower-viewport { position: relative; width: 100%; height: 100svh; overflow: hidden; background: #101622; color: #fff1d5; }
+.tower-stage { position: absolute; left: 50%; top: 50%; width: 960px; height: 560px; transform-origin: center; overflow: hidden; isolation: isolate; font-family: Georgia, serif; background: #604c7b; }
+.tower-backdrop { position: absolute; inset: 0; background: linear-gradient(#222a50, #846481 38%, #ecaa86 72%, #dd9964); overflow: hidden; }
+.tower-sun { position: absolute; width: 150px; height: 150px; border-radius: 50%; background: #ffd89f; left: 280px; top: 175px; box-shadow: 0 0 90px #ffbb6877; }
+.tower-cloud { position: absolute; width: 230px; height: 3px; background: #ffe3bd44; box-shadow: 30px 12px #ffe3bd22, -30px -10px #ffe3bd11; animation: tower-drift 25s ease-in-out infinite alternate; }
+.cloud-one { top: 160px; left: 110px; }.cloud-two { top: 230px; left: 520px; }
+.tower-skyline { position: absolute; bottom: 138px; left: -20px; display: flex; align-items: end; gap: 16px; opacity: .64; }
+.tower-skyline i { display: block; flex-shrink: 0; background: repeating-linear-gradient(90deg, transparent 0 12px, #f5c29133 12px 16px, transparent 16px 24px), repeating-linear-gradient(0deg, #29334d 0 14px, #37405a 14px 19px); border-top: 4px solid #28314b; }
+.tower-balustrade { position: absolute; inset: 354px 0 auto; height: 84px; border-top: 9px solid #ddc091; border-bottom: 8px solid #5d4a44; background: repeating-linear-gradient(90deg, #f4d4a1 0 10px, #927361 10px 16px, transparent 16px 70px); box-shadow: 0 -3px #fbe2b2; }
+.tower-floor { position: absolute; top: 438px; bottom: 0; width: 100%; border-top: 8px solid #f7d28e; background: repeating-linear-gradient(90deg, transparent 0 118px, #c6996133 118px 120px), repeating-linear-gradient(0deg, #302b35 0 35px, #695044 35px 38px); box-shadow: inset 0 15px 25px #0005; }
+.tower-sign { position: absolute; right: 47px; top: 115px; text-align: center; padding: 15px 25px; border: 1px solid #edcf8866; background: #1a233ca8; box-shadow: inset 0 0 0 5px #192338; }
+.tower-sign span { display: block; color: #f3d492; font-size: 22px; letter-spacing: 4px; }.tower-sign small { display: block; font: 8px monospace; letter-spacing: 2px; margin-top: 9px; }
+.tower-podium { position: absolute; left: 790px; top: 358px; width: 100px; height: 80px; background: linear-gradient(90deg,#a77d40,#f7d594,#9e7139); border-top: 5px solid #ffe0a8; text-align: center; opacity: .65; }
+.tower-podium span { display: block; font-size: 42px; color: #604127; }.tower-podium small { font: 8px monospace; color: #604127; letter-spacing: 3px; }
+.tower-case { position: absolute; left: 905px; top: 378px; color: #8affd2; font: 38px monospace; text-shadow: 0 0 20px #63ffd4; }.tower-case span { position: absolute; top: 46px; right: 0; width: 95px; font: 8px monospace; letter-spacing: 1px; }
+.tower-chapter { position: absolute; top: 27px; left: 32px; z-index: 2; pointer-events: none; }
+.tower-chapter span { color: #f5c983; font: 10px monospace; letter-spacing: 3px; }.tower-chapter h1 { font-size: 32px; font-weight: 400; margin: 5px 0; }.tower-chapter small { font: 9px monospace; color: #e1cfbe; letter-spacing: 1px; }
+.tower-action { position: absolute; inset: 0; }
+.tower-boss, .tower-hero, .tower-projectile { position: absolute; }
+.tower-boss { z-index: 3; }.trump-sprite { position: absolute; width: 130px; height: 190px; bottom: -7px; left: -18px; overflow: visible; filter: drop-shadow(0 5px 3px #0003); }
+.trump-body { transform-origin: 65px 175px; animation: tower-breathe 1.5s ease-in-out infinite; }
+.trump-arm { transform-origin: 34px 88px; }.pose-windup .trump-arm { animation: tower-wave .3s alternate infinite; }
+.pose-attack .trump-body { transform: rotate(-10deg); animation: none; }.pose-recover .trump-body { transform: rotate(4deg); }
+.pose-talk .trump-mouth, .pose-windup .trump-mouth { animation: tower-talk .25s alternate infinite; transform-origin: 69px 73px; }
+.trump-sprite.pose-defeated { animation: tower-defeated 1.5s forwards; }.is-hit { filter: brightness(1.8) drop-shadow(0 0 6px #fff); }
+.tower-hero { z-index: 4; }.tower-hero > img { position: absolute; bottom: 0; left: -18px; width: 88px; object-fit: contain; object-position: center bottom; filter: drop-shadow(0 5px 3px #0005); }
+.hero-hurt { animation: tower-blink .12s steps(2) infinite; }.hero-utility { filter: drop-shadow(0 0 12px #a4f782); }
+.hero-dying { animation: tower-hero-death 1.8s forwards; }.tower-shield { position: absolute; inset: -10px -25px; border: 3px solid #a6eaff; border-radius: 50%; box-shadow: 0 0 20px #7be0ff, inset 0 0 20px #7be0ff88; }
+.tower-projectile { z-index: 5; }.tower-projectile img { width: 100%; height: 100%; object-fit: contain; }.projectile-pizza img { animation: tower-spin .7s linear infinite; }
+.projectile-contract { background: #fff5d9; color: #8a6556; font: bold 30px Georgia; text-align: center; line-height: 20px; border: 2px solid #e8cda8; transform: rotate(-12deg); box-shadow: 3px 3px #0003; }
+.projectile-gold { background: linear-gradient(135deg,#ffed9f,#e0a341); border: 3px solid #ffe298; color: #88601d; text-align: center; font: bold 20px Georgia; box-shadow: 0 0 15px #ffc96799; }
+.projectile-wall { border: 3px solid #e4ba78; background: repeating-linear-gradient(0deg, #b98955 0 17px,#efce94 17px 20px); box-shadow: 4px 4px #0004; }
+.gold-warning { position: absolute; top: 0; width: 46px; height: 438px; background: linear-gradient(transparent,#ffcf6733); border-bottom: 5px solid #fff18a; animation: tower-blink .3s alternate infinite; }
+.tower-stage .health-hud { top: 125px; left: 30px; transform: scale(.78); transform-origin: top left; z-index: 6; }
+.tower-stage .enemy-health-hud { top: 33px; left: 570px; right: 100px; width: auto; z-index: 6; }.tower-stage .enemy-health-fill { background: linear-gradient(90deg,#c5903f,#ffe2a3); }
+.tower-stage .game-menu-button { z-index: 10; }.tower-stage .enemy-speech { z-index: 7; width: 230px; max-width: 260px; font-size: 15px; }
+.tower-status { position: absolute; top: 467px; left: 32px; right: 32px; z-index: 6; display: flex; align-items: center; gap: 18px; font-family: monospace; }
+.tower-status > span { color: #f6d498; font-size: 10px; letter-spacing: 1px; padding: 8px 10px; border: 1px solid #f6d49855; }.tower-status strong { font-size: 12px; font-weight: 400; }.tower-status small { margin-left: auto; color: #c6b8a8; }
+.tower-overlay { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: #101827ab; backdrop-filter: blur(5px); }
+.tower-card { width: 410px; padding: 28px 35px; border: 1px solid #d4ac66; background: linear-gradient(135deg,#26344b,#172132); box-shadow: 0 20px 80px #0007, inset 0 0 0 5px #d4ac6610; }
+.tower-eyebrow { font: 9px monospace; letter-spacing: 2px; color: #efce92; }.tower-card h2 { margin: 12px 0; font: 48px/1 Georgia; font-weight: 400; }.tower-card h2 em { color: #efd097; font-weight: 400; }
+.tower-card p { font: 14px/1.5 Georgia; color: #e2d9cc; }.tower-card blockquote { margin: 15px 0; border-left: 2px solid #d4ac66; padding-left: 15px; color: #eed3a2; font: italic 14px/1.4 Georgia; }.tower-card .tower-tip { font: 11px/1.6 monospace; color: #b9c8d8; }
+.tower-card button { width: 100%; margin-top: 12px; padding: 12px 16px; background: #efcf96; color: #202a3a; border: 1px solid #ffe7b4; font: bold 14px Georgia; cursor: pointer; text-align: left; }.tower-card button span { float: right; }.tower-card button:hover { background: #ffe8bc; }.tower-card button:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }.tower-card > small { display: block; margin-top: 12px; font: 9px monospace; color: #a8b9cb; }.tower-card .tower-secondary { background: transparent; color: #efcf96; }
+.tower-stage .pause-overlay { z-index: 30; }.tower-paused .tower-action *, .tower-paused .tower-backdrop *, .tower-reduced * { animation-play-state: paused !important; }
+.debug-box { outline: 1px solid #76ffb4; }
+@keyframes tower-breathe { 50% { transform: translateY(-3px) rotate(1deg); } }
+@keyframes tower-wave { to { transform: rotate(-35deg); } }
+@keyframes tower-talk { to { transform: scaleY(2); } }
+@keyframes tower-defeated { to { transform: translate(25px,30px) rotate(80deg); opacity: .45; } }
+@keyframes tower-hero-death { 40% { transform: translateY(-80px); } to { transform: translateY(240px) rotate(-25deg); opacity: 0; } }
+@keyframes tower-blink { to { opacity: .45; } }
+@keyframes tower-spin { to { transform: rotate(360deg); } }
+@keyframes tower-drift { to { transform: translateX(100px); } }
+@media (prefers-reduced-motion: reduce) { .tower-stage * { animation: none !important; } }

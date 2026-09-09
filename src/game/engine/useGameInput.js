@@ -1,24 +1,39 @@
 ﻿import { useEffect } from 'react'
 
-export function useGameInput({ keysRef, isPausedRef, onOpenMenu, onCloseMenu }) {
+import { useRef } from 'react'
+import { clearGameInput } from './inputState.js'
+
+export function useGameInput({ keysRef, isPausedRef, onOpenMenu, onCloseMenu, enabled = true }) {
+  const callbacksRef = useRef({ onOpenMenu, onCloseMenu })
+  useEffect(() => {
+    callbacksRef.current = { onOpenMenu, onCloseMenu }
+  }, [onOpenMenu, onCloseMenu])
   useEffect(() => {
     const onKeyChange = (pressed) => (event) => {
+      if (!enabled) return
+      if (event.target instanceof HTMLElement && (
+        event.target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName)
+      )) return
       const key = typeof event.key === 'string' ? event.key.toLowerCase() : ''
       const code = event.code
 
       if (pressed && (event.key === 'Escape' || code === 'Escape')) {
         event.preventDefault()
+        if (event.repeat) return
         if (isPausedRef.current) {
-          onCloseMenu()
+          callbacksRef.current.onCloseMenu()
         } else {
-          onOpenMenu()
+          callbacksRef.current.onOpenMenu()
         }
         return
       }
 
       if (isPausedRef.current) {
+        if (!pressed) clearGameInput(keysRef)
         return
       }
+
+      if (code === 'ArrowLeft' || code === 'ArrowRight') event.preventDefault()
 
       if (key === 'p' || code === 'KeyP') {
         event.preventDefault()
@@ -105,13 +120,23 @@ export function useGameInput({ keysRef, isPausedRef, onOpenMenu, onCloseMenu }) 
 
     const handleKeyDown = onKeyChange(true)
     const handleKeyUp = onKeyChange(false)
+    const releaseAndPause = () => {
+      clearGameInput(keysRef)
+      if (enabled && !isPausedRef.current) callbacksRef.current.onOpenMenu()
+    }
+    const visibilityChange = () => { if (document.hidden) releaseAndPause() }
 
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
+    window.addEventListener('blur', releaseAndPause)
+    document.addEventListener('visibilitychange', visibilityChange)
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
+      window.removeEventListener('blur', releaseAndPause)
+      document.removeEventListener('visibilitychange', visibilityChange)
+      clearGameInput(keysRef)
     }
-  }, [isPausedRef, keysRef, onCloseMenu, onOpenMenu])
+  }, [enabled, isPausedRef, keysRef])
 }
