@@ -9,7 +9,7 @@ import { getTrumpFrame } from '../src/game/characters/trump/trumpAnimation.js'
 
 const active = () => Object.assign(createTowerBattle(), { mode: 'active', attackTimer: 100 })
 const advance = (s, seconds, keys = {}) => { for (let t = 0; t < seconds; t += 1 / 60) stepTower(s, keys, 1 / 60) }
-const shot = (s, changes = {}) => ({ id: 1, x: s.player.x, y: s.player.y + 30, width: 42, height: 26, vx: 0, vy: 0, damage: 1, friendly: false, ...changes })
+const shot = (s, changes = {}) => ({ id: 1, x: s.player.x, y: s.player.y + 8, width: 42, height: 26, vx: 0, vy: 0, damage: 1, friendly: false, ...changes })
 
 test('same hero size across chapters; office starts with three sodas', () => {
   assert.equal(HERO.height, PLAYER.height)
@@ -65,15 +65,15 @@ test('soda is consumed once, bottles replace pizzas during utility', () => {
 })
 test('boss phases, defeat and restart state', () => {
   const s = active()
-  s.boss.health = 60
+  s.boss.health = TRUMP.health / 2
   stepTower(s, {}, 1 / 60)
   assert.equal(s.phase, 2)
-  s.projectiles = [shot(s, { ...s.boss, friendly: true, damage: 60 })]
+  s.projectiles = [shot(s, { ...s.boss, friendly: true, damage: TRUMP.health / 2 })]
   stepTower(s, {}, 1 / 60)
   assert.equal(s.mode, 'victory')
   advance(s, TRUMP.defeatDuration + 0.1)
   assert.equal(s.mode, 'won')
-  assert.equal(createTowerBattle().boss.health, 120)
+  assert.equal(createTowerBattle().boss.health, TRUMP.health)
 })
 
 test('anger interrupts the telegraph once and resumes with a fresh warning', () => {
@@ -88,7 +88,8 @@ test('anger interrupts the telegraph once and resumes with a fresh warning', () 
   assert.equal(s.projectiles.length, 0)
   advance(s, 0.85)
   assert.equal(s.boss.pose, 'windup')
-  assert.ok(s.attackTimer > 1)
+  assert.equal(s.attack.type, 'wall', 'phase two immediately challenges permanent crouching')
+  assert.ok(s.attackTimer > 0.8)
   assert.equal(s.phaseAnnounced, true)
 })
 
@@ -104,7 +105,7 @@ test('each power releases on the cast frame and keeps its follow-through', () =>
     assert.equal(getTrumpFrame(s.boss.pose, s.boss.poseTime), 1)
     advance(s, 0.3)
     assert.equal(getTrumpFrame(s.boss.pose, s.boss.poseTime), 2)
-    advance(s, 0.3)
+    advance(s, attack.type === 'contract' ? 1.5 : 0.3)
     assert.equal(s.boss.pose, 'recover')
   }
 })
@@ -136,4 +137,15 @@ test('death clears hazards; invalid delta cannot corrupt state', () => {
   assert.equal(s.projectiles.length, 0)
   advance(s, 2.1)
   assert.equal(s.mode, 'lost')
+})
+
+test('victory clears damage flicker and lets an airborne Mario land', () => {
+  const s = active()
+  s.player.hurt = 1; s.player.y -= 60; s.player.vy = -50; s.boss.health = 0
+  stepTower(s, {}, 1 / 60)
+  assert.equal(s.mode, 'victory')
+  assert.equal(s.player.hurt, 0)
+  advance(s, 1)
+  assert.equal(s.player.y + s.player.height, TOWER.floor)
+  assert.equal(s.player.vy, 0)
 })

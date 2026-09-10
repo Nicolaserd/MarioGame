@@ -8,13 +8,19 @@
 - Mantener pnpm como gestor del proyecto; no desinstalar ni desactivar npm, pnpm o Corepack. La precaucion se limita al ejecutable detectado: no ejecutarlo ni reinstalarlo para eludir la deteccion. No crear exclusiones ni desactivar el antivirus. Aclarar la alerta con Kaspersky o el administrador antes de reutilizar ese binario.
 - Una auditoria de dependencias sin avisos no equivale a una comprobacion antimalware del gestor.
 
-## Trabajo del juego por continuar
+## Trabajo del juego validado
 
 La segunda batalla esta implementada en `src/game/scenes/tower/`. La oficina se separo en modulos y ambos capitulos comparten HUD y metricas de Mario. Se validaron lint y build con Node y las herramientas locales existentes, sin ejecutar el binario detectado.
 
-Pasaron nueve pruebas de simulacion y comprobaciones de navegador de transicion, derrota, reintento, victoria y pausa. La transicion y victoria se aceleraron modificando estado solo en el navegador de pruebas; no se agregaron trucos al producto. La verificacion visual se guarda en `output/playwright/`.
+Pasaron 35 pruebas de simulacion, lint y build con herramientas locales mediante Node. Se comprobaron en navegador transicion, ataques, recortes, derrota, reintento, victoria y pausa. La revision adicional incorpora [esquivas de Trump](juego/trump-esquivas.md), seis poses y una regresion desde el inicio normal. Algunas situaciones se prepararon modificando estado solo en el navegador de pruebas; no se agregaron trucos al producto. Las capturas estan en `output/playwright/`.
 
-Siguen pendientes las comprobaciones rutinarias que ejecutan pnpm y la resolucion de la alerta. Las pruebas funcionales del juego no certifican la seguridad del gestor.
+La ultima revision sincroniza avisos, poses y proyectiles de ambos jefes; cancela ataques al aturdir al primero y aumenta la dificultad del segundo. Detalles: [primer jefe](juego/boss.md) y [torre](juego/torre.md).
+
+## Entorno pendiente
+
+Consulta de solo lectura al registro oficial el 2026-09-10: pnpm 12.3.4 sigue siendo latest; [Vite](https://registry.npmjs.org/vite/latest) publica 8.3.0 y [React](https://registry.npmjs.org/react/latest)/React DOM 19.3.0. El proyecto conserva Vite 8.2.2 y React/React DOM 19.2.8. No se instalaron actualizaciones. Antes de instalarlas, volver a verificar versiones, compatibilidad y avisos oficiales de [entorno](../reglas/entorno.md).
+
+Siguen pendientes la actualizacion, `pnpm check:versions`, `pnpm check:security`, `pnpm check:docs` y la resolucion de la alerta. Los limites y enlaces locales de los documentos editados se comprobaron manualmente; esto no sustituye esos comandos. Las pruebas funcionales del juego no certifican la seguridad del gestor.
 
 Tras resolver el incidente, verificar el estado del equipo y una distribucion confiable del gestor antes de retirar este bloqueo y continuar las pruebas.
 

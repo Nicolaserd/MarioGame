@@ -1,8 +1,6 @@
 ﻿export const THROW = {
   duration: 0.28,
   cooldown: 0.18,
-  handOffsetX: 68,
-  handOffsetY: 63,
 }
 
 export const PIZZA = {
@@ -47,8 +45,6 @@ export const BOTTLE = {
   damage: 2,
   speed: 760,
   gravity: 260,
-  handOffsetX: 62,
-  handOffsetY: 62,
 }
 
 export const ENEMY_BALL = {
@@ -68,6 +64,6 @@ export const ENEMY_BALL = {
   floorBounceVelocity: 260,
   maxBounces: 3,
   lifetime: 4.6,
-  launchOffsetX: 134,
-  launchOffsetY: 72,
+  launchOffsetX: 112,
+  launchOffsetY: 54,
 }

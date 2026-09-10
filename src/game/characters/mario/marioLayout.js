@@ -1,238 +1,58 @@
-import { attacked, brake, crouch, death1, death2, death3, fall, idle1, idle2, jump, push1, push2, run1, run2, run3, shield1, shield2, throwPose, util1, util2, util3, util4, util5, util6 } from './marioAssets.js'
+import * as sprites from './marioAssets.js'
 import { PLAYER_VISUAL } from './marioConstants.js'
 
-export const SPRITE_METRICS = new Map([
-  [
-    idle1,
-    {
-      width: 496,
-      height: 910,
-      footAnchorX: 200.66,
-    },
-  ],
-  [
-    idle2,
-    {
-      width: 512,
-      height: 939,
-      footAnchorX: 221.29,
-    },
-  ],
-  [
-    brake,
-    {
-      width: 623,
-      height: 897,
-      footAnchorX: 297.94,
-    },
-  ],
-  [
-    run1,
-    {
-      width: 1076,
-      height: 726,
-      footAnchorX: 592.74,
-    },
-  ],
-  [
-    run2,
-    {
-      width: 991,
-      height: 727,
-      footAnchorX: 532.18,
-    },
-  ],
-  [
-    run3,
-    {
-      width: 1078,
-      height: 694,
-      footAnchorX: 516.94,
-    },
-  ],
-  [
-    jump,
-    {
-      width: 1014,
-      height: 797,
-      footAnchorX: 425.28,
-    },
-  ],
-  [
-    fall,
-    {
-      width: 851,
-      height: 728,
-      footAnchorX: 411.53,
-    },
-  ],
-  [
-    crouch,
-    {
-      width: 690,
-      height: 790,
-      footAnchorX: 310,
-      visualHeight: PLAYER_VISUAL.idleHeight * PLAYER_VISUAL.crouchHeightRatio,
-    },
-  ],
-  [
-    death1,
-    {
-      width: 610,
-      height: 910,
-      footAnchorX: 290,
-    },
-  ],
-  [
-    death2,
-    {
-      width: 1300,
-      height: 560,
-      footAnchorX: 625,
-    },
-  ],
-  [
-    death3,
-    {
-      width: 1020,
-      height: 840,
-      footAnchorX: 510,
-    },
-  ],
-  [
-    shield1,
-    {
-      width: 560,
-      height: 900,
-      footAnchorX: 270,
-    },
-  ],
-  [
-    shield2,
-    {
-      width: 900,
-      height: 920,
-      footAnchorX: 350,
-    },
-  ],
-  [
-    push1,
-    {
-      width: 1134,
-      height: 667,
-      footAnchorX: 430,
-    },
-  ],
-  [
-    push2,
-    {
-      width: 1374,
-      height: 778,
-      footAnchorX: 1020,
-    },
-  ],
-  [
-    attacked,
-    {
-      width: 905,
-      height: 954,
-      footAnchorX: 452,
-    },
-  ],
-  [
-    util1,
-    {
-      width: 900,
-      height: 930,
-      footAnchorX: 452,
-    },
-  ],
-  [
-    util2,
-    {
-      width: 900,
-      height: 930,
-      footAnchorX: 452,
-    },
-  ],
-  [
-    util3,
-    {
-      width: 900,
-      height: 930,
-      footAnchorX: 452,
-    },
-  ],
-  [
-    util4,
-    {
-      width: 900,
-      height: 930,
-      footAnchorX: 452,
-    },
-  ],
-  [
-    util5,
-    {
-      width: 900,
-      height: 930,
-      footAnchorX: 452,
-    },
-  ],
-  [
-    util6,
-    {
-      width: 930,
-      height: 945,
-      footAnchorX: 472,
-    },
-  ],
-  [
-    throwPose,
-    {
-      width: 1536,
-      height: 1024,
-      footAnchorX: 545,
-    },
-  ],
-])
-
-export const IDLE_FRAMES = [idle1, idle2]
-
-export const RUN_FRAMES = [run1, run2, run3]
-
-export const UTILITY_FRAMES = [util1, util2, util3, util4, util5, util6]
-
-export const DEATH_FRAMES = [death1, death2, death3]
-
-export const PLAYER_VISUAL_SCALE =
-  PLAYER_VISUAL.idleHeight / PLAYER_VISUAL.referenceHeight
-
-export const SPRITE_LAYOUTS = new Map(
-  Array.from(SPRITE_METRICS.entries(), ([sprite, metrics]) => [
-    sprite,
-    (() => {
-      const scale =
-        metrics.visualHeight === undefined
-          ? PLAYER_VISUAL_SCALE
-          : metrics.visualHeight / metrics.height
-
-      return {
-        width: Number((metrics.width * scale).toFixed(2)),
-        height: Number((metrics.height * scale).toFixed(2)),
-        footAnchorX: Number((metrics.footAnchorX * scale).toFixed(2)),
-      }
-    })(),
-  ]),
-)
-
-export function getSpriteLayout(sprite) {
-  return (
-    SPRITE_LAYOUTS.get(sprite) ?? {
-      width: PLAYER_VISUAL.idleHeight,
-      height: PLAYER_VISUAL.idleHeight,
-      footAnchorX: PLAYER_VISUAL.idleHeight / 2,
-    }
-  )
+// Source canvas size, body axis X, sole Y and optional scale correction.
+// Dust, wings, outstretched arms and transparent margins never determine body size.
+const metrics = {
+  idle1: [496, 910, 200.66, 897],
+  idle2: [512, 939, 221.29, 926, 884 / 914],
+  brake: [623, 897, 297.94, 884],
+  run1: [1076, 726, 700, 712],
+  run2: [991, 727, 670, 713],
+  run3: [1078, 694, 620, 680],
+  jump: [1014, 797, 530, 784],
+  fall: [851, 728, 411.53, 714],
+  crouch: [690, 790, 310, 789, PLAYER_VISUAL.crouchHeightRatio * 910 / 789],
+  death1: [610, 910, 290, 909],
+  death2: [1300, 560, 625, 549],
+  death3: [1020, 840, 510, 839],
+  shield1: [560, 900, 270, 899],
+  shield2: [900, 920, 350, 919],
+  push1: [1134, 667, 430, 654],
+  push2: [1374, 778, 1020, 762],
+  attacked: [905, 954, 452, 941, 0.9],
+  util1: [900, 930, 452, 928, 0.9],
+  util2: [900, 930, 452, 929, 0.9],
+  util3: [900, 930, 452, 929, 0.9],
+  util4: [900, 930, 452, 929, 0.9],
+  util5: [900, 930, 452, 929, 0.9],
+  util6: [930, 945, 472, 944, 0.86],
+  throwPose: [1536, 1024, 600, 916, 884 / 867],
 }
 
+export const SPRITE_METRICS = new Map(Object.entries(metrics).map(([name, values]) => {
+  const [width, height, footAnchorX, footAnchorY, correction = 1] = values
+  return [sprites[name], { width, height, footAnchorX, footAnchorY, correction }]
+}))
+export const IDLE_FRAMES = [sprites.idle1, sprites.idle2]
+export const RUN_FRAMES = [sprites.run1, sprites.run2, sprites.run3]
+export const UTILITY_FRAMES = [sprites.util1, sprites.util2, sprites.util3, sprites.util4, sprites.util5, sprites.util6]
+export const DEATH_FRAMES = [sprites.death1, sprites.death2, sprites.death3]
+export const PLAYER_VISUAL_SCALE = PLAYER_VISUAL.idleHeight / PLAYER_VISUAL.referenceHeight
+
+export const SPRITE_LAYOUTS = new Map(Array.from(SPRITE_METRICS, ([sprite, m]) => {
+  const scale = PLAYER_VISUAL_SCALE * m.correction
+  return [sprite, {
+    width: m.width * scale, height: m.height * scale,
+    footAnchorX: m.footAnchorX * scale, footAnchorY: m.footAnchorY * scale,
+    bottomOffset: (m.height - m.footAnchorY) * scale,
+  }]
+}))
+
+export function getSpriteLayout(sprite) {
+  return SPRITE_LAYOUTS.get(sprite) ?? {
+    width: PLAYER_VISUAL.idleHeight, height: PLAYER_VISUAL.idleHeight,
+    footAnchorX: PLAYER_VISUAL.idleHeight / 2, footAnchorY: PLAYER_VISUAL.idleHeight,
+    bottomOffset: 0,
+  }
+}

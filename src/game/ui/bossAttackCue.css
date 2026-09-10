@@ -1,0 +1,5 @@
+.boss-attack-cue { position: absolute; z-index: 8; width: 150px; transform: translateX(-50%); pointer-events: none; padding: 5px 8px; border: 1px solid #e4ba78; background: #192231ed; color: #ffe1a3; font: 700 9px/1.3 Arial,sans-serif; letter-spacing: 1px; text-align: center; }
+.boss-attack-track { margin-top: 4px; height: 3px; background: #ffffff20; overflow: hidden; }
+.boss-attack-track i { display: block; height: 100%; background: #f0be68; transform-origin: left; }
+.boss-attack-cue.is-released { border-color: #ff916e; color: #ffc4ac; }
+.boss-attack-cue.is-released i { background: #ff916e; }

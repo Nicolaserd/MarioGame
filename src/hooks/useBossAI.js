@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
 
+import { DOCUMENT_ATTACK } from '../game/characters/corruptDocument/corruptDocumentConstants.js'
+
 export const BOSS_STATES = Object.freeze({
   IDLE: 'idle',
   CHASE: 'chase',
@@ -38,8 +40,8 @@ const AI = {
   optimalMinDistance: 395,
   optimalMaxDistance: 760,
   farDistance: 850,
-  attackPrepareTime: 0.58,
-  attackDuration: 0.94,
+  attackPrepareTime: DOCUMENT_ATTACK.prepareTime,
+  attackDuration: DOCUMENT_ATTACK.duration,
   attackCooldownMin: 1.05,
   attackCooldownMax: 2,
   attackChance: 0.78,
@@ -368,6 +370,7 @@ function startThrow(boss) {
 }
 
 function finishThrow(boss) {
+  boss.isThrowing = false
   setState(boss, BOSS_STATES.KEEP_DISTANCE)
   boss.attackCooldown = randomBetween(AI.attackCooldownMin, AI.attackCooldownMax)
   boss.decisionTimer = randomBetween(AI.decisionMin, AI.decisionMax)
@@ -577,6 +580,11 @@ export function stunBoss(boss, duration = AI.stunDuration) {
 
   setState(boss, BOSS_STATES.STUNNED)
   boss.stunTimer = Math.max(boss.stunTimer ?? 0, duration)
+  boss.thrownEnemyProjectiles = []
+  boss.isThrowing = false
+  boss.pendingShot = false
+  boss.shotReleased = false
+  boss.attackTimer = 0
   boss.pendingDodge = null
   boss.reactionTimer = 0
   boss.crouching = false
@@ -593,7 +601,7 @@ export function updateBossAI(boss, player, projectiles, deltaTime) {
 
   resetFrameFlags(boss)
   updateTimers(boss, dt)
-  boss.facing = playerCenterX < bossCenterX ? -1 : 1
+  if (boss.aiState !== BOSS_STATES.THROW_ATTACK) boss.facing = playerCenterX < bossCenterX ? -1 : 1
 
   if (boss.aiState === BOSS_STATES.STUNNED) {
     updateStunned(boss, dt)

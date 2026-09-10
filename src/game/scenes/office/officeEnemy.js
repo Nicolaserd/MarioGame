@@ -80,12 +80,9 @@ export function startEnemyCelebration(enemy, deathX) {
 }
 
 export function chooseEnemyCombatSprite(enemy) {
+  if (enemy.mode === BOSS_STATES.STUNNED || enemy.isStunned) return ENEMY_SPRITES.stunned
   if (enemy.mode === BOSS_STATES.THROW_ATTACK || enemy.isThrowing) {
-    return ENEMY_SPRITES.throw
-  }
-
-  if (enemy.mode === BOSS_STATES.STUNNED || enemy.isStunned) {
-    return ENEMY_SPRITES.stunned
+    return enemy.shotReleased ? ENEMY_SPRITES.throw : ENEMY_SPRITES.idle
   }
 
   if (enemy.crouching) {

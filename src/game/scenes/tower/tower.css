@@ -17,16 +17,11 @@
 .tower-chapter span { color: #f5c983; font: 10px monospace; letter-spacing: 3px; }.tower-chapter h1 { font-size: 32px; font-weight: 400; margin: 5px 0; }.tower-chapter small { font: 9px monospace; color: #e1cfbe; letter-spacing: 1px; }
 .tower-action { position: absolute; inset: 0; }
 .tower-boss, .tower-hero, .tower-projectile { position: absolute; }
-.tower-boss { z-index: 3; }.trump-sprite { position: absolute; width: 130px; height: 190px; bottom: -7px; left: -18px; overflow: visible; filter: drop-shadow(0 5px 3px #0003); }
-.trump-body { transform-origin: 65px 175px; animation: tower-breathe 1.5s ease-in-out infinite; }
-.trump-arm { transform-origin: 34px 88px; }.pose-windup .trump-arm { animation: tower-wave .3s alternate infinite; }
-.pose-attack .trump-body { transform: rotate(-10deg); animation: none; }.pose-recover .trump-body { transform: rotate(4deg); }
-.pose-talk .trump-mouth, .pose-windup .trump-mouth { animation: tower-talk .25s alternate infinite; transform-origin: 69px 73px; }
-.trump-sprite.pose-defeated { animation: tower-defeated 1.5s forwards; }.is-hit { filter: brightness(1.8) drop-shadow(0 0 6px #fff); }
+.tower-boss { z-index: 3; }
 .tower-hero { z-index: 4; }.tower-hero > img { position: absolute; bottom: 0; left: -18px; width: 88px; object-fit: contain; object-position: center bottom; filter: drop-shadow(0 5px 3px #0005); }
 .hero-hurt { animation: tower-blink .12s steps(2) infinite; }.hero-utility { filter: drop-shadow(0 0 12px #a4f782); }
 .hero-dying { animation: tower-hero-death 1.8s forwards; }.tower-shield { position: absolute; inset: -10px -25px; border: 3px solid #a6eaff; border-radius: 50%; box-shadow: 0 0 20px #7be0ff, inset 0 0 20px #7be0ff88; }
-.tower-projectile { z-index: 5; }.tower-projectile img { width: 100%; height: 100%; object-fit: contain; }.projectile-pizza img { animation: tower-spin .7s linear infinite; }
+.tower-projectile { z-index: 5; }.tower-projectile img { width: 100%; height: 100%; object-fit: contain; }
 .projectile-contract { background: #fff5d9; color: #8a6556; font: bold 30px Georgia; text-align: center; line-height: 20px; border: 2px solid #e8cda8; transform: rotate(-12deg); box-shadow: 3px 3px #0003; }
 .projectile-gold { background: linear-gradient(135deg,#ffed9f,#e0a341); border: 3px solid #ffe298; color: #88601d; text-align: center; font: bold 20px Georgia; box-shadow: 0 0 15px #ffc96799; }
 .projectile-wall { border: 3px solid #e4ba78; background: repeating-linear-gradient(0deg, #b98955 0 17px,#efce94 17px 20px); box-shadow: 4px 4px #0004; }
@@ -43,12 +38,7 @@
 .tower-card button { width: 100%; margin-top: 12px; padding: 12px 16px; background: #efcf96; color: #202a3a; border: 1px solid #ffe7b4; font: bold 14px Georgia; cursor: pointer; text-align: left; }.tower-card button span { float: right; }.tower-card button:hover { background: #ffe8bc; }.tower-card button:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }.tower-card > small { display: block; margin-top: 12px; font: 9px monospace; color: #a8b9cb; }.tower-card .tower-secondary { background: transparent; color: #efcf96; }
 .tower-stage .pause-overlay { z-index: 30; }.tower-paused .tower-action *, .tower-paused .tower-backdrop *, .tower-reduced * { animation-play-state: paused !important; }
 .debug-box { outline: 1px solid #76ffb4; }
-@keyframes tower-breathe { 50% { transform: translateY(-3px) rotate(1deg); } }
-@keyframes tower-wave { to { transform: rotate(-35deg); } }
-@keyframes tower-talk { to { transform: scaleY(2); } }
-@keyframes tower-defeated { to { transform: translate(25px,30px) rotate(80deg); opacity: .45; } }
 @keyframes tower-hero-death { 40% { transform: translateY(-80px); } to { transform: translateY(240px) rotate(-25deg); opacity: 0; } }
 @keyframes tower-blink { to { opacity: .45; } }
-@keyframes tower-spin { to { transform: rotate(360deg); } }
 @keyframes tower-drift { to { transform: translateX(100px); } }
 @media (prefers-reduced-motion: reduce) { .tower-stage * { animation: none !important; } }

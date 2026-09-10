@@ -1,5 +1,7 @@
 ﻿import { PLAYER } from '../mario/marioConstants.js'
 
+export const DOCUMENT_ATTACK = { prepareTime: 0.58, duration: 0.94 }
+
 export const ENEMY = {
   health: 100,
   width: 350,

@@ -98,7 +98,9 @@ export function chooseSprite(player) {
     return UTILITY_FRAMES[utilityIndex]
   }
 
-  if (player.throwTimer > 0) {
+  if (player.crouching) return crouch
+
+  if (player.throwTimer > 0 && player.onGround) {
     return throwPose
   }
 
@@ -431,7 +433,10 @@ export function stepPlayer(player, keys, deltaTime) {
   const shieldActive = player.shieldTimer > 0
   const actionLocked = utilityLocked || shieldActive
   const rawInput = (keys.right ? 1 : 0) - (keys.left ? 1 : 0)
+  if (rawInput !== 0 && !actionLocked) player.facing = rawInput
   const wantsCrouch = keys.down && player.onGround && !actionLocked
+  player.crouching = !!wantsCrouch
+  if (wantsCrouch) { player.vx = 0; player.brakeTimer = 0 }
   const input = wantsCrouch || actionLocked ? 0 : rawInput
   const thrownPizzas = []
   const thrownUtilityProjectiles = []
@@ -542,14 +547,18 @@ export function stepPlayer(player, keys, deltaTime) {
   if (
     releasedMovement &&
     Math.abs(player.vx) > PHYSICS.brakeTriggerSpeed &&
+    !wantsCrouch &&
     !actionLocked
   ) {
     player.brakeTimer = PHYSICS.brakeDuration
   }
 
-  if (input !== 0) {
-    player.vx += input * PHYSICS.acceleration * dt
-    player.facing = input
+  const movementInput = player.throwTimer > 0 && player.onGround ? 0 : input
+  if (player.throwTimer > 0 && player.onGround) player.vx = 0
+  if (movementInput !== 0) {
+    player.brakeTimer = 0
+    player.vx += movementInput * PHYSICS.acceleration * dt
+    player.facing = movementInput
   } else if (player.vx !== 0) {
     const sign = Math.sign(player.vx)
     const slowedSpeed = Math.max(0, Math.abs(player.vx) - PHYSICS.friction * dt)
@@ -641,7 +650,7 @@ export function stepPlayer(player, keys, deltaTime) {
     player.utilityRegenTimer = 0
   }
 
-  player.hadInput = rawInput !== 0
+  player.hadInput = movementInput !== 0
   player.sprite = chooseSprite(player)
 
   return {

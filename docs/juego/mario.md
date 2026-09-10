@@ -33,7 +33,8 @@ Reglas importantes:
 
 - El jugador acelera con izquierda/derecha y se frena por friccion.
 - El salto solo ocurre en piso y si no esta bloqueado por estados especiales.
-- Agachado ignora input horizontal y no permite saltar hasta soltar abajo.
+- Agachado detiene el desplazamiento, cancela el freno y no permite saltar hasta soltar abajo. Disparar mantiene la pose agachada.
+- Lanzar desde suelo detiene el movimiento durante el gesto; en aire mantiene la trayectoria. Cambiar direccion cancela la pose de freno anterior.
 - Si cae por debajo de `WORLD.killY`, vuelve al spawn con freno de aterrizaje.
 - El piso se resuelve con `FLOOR_SEGMENTS`, `getFloorSegmentAtFoot` y `standingOnGround`.
 - La camara sigue a Mario con `getCamera` y se limita al mundo.

@@ -1,0 +1,9 @@
+# Arte de esquivas
+
+Generado el 2026-09-10 con la herramienta integrada `imagegen`; sin CLI ni instalaciones. Referencia visual: [trump-actions.png](trump-actions.png). Archivo conectado: [trump-dodge.png](trump-dodge.png), 1254 x 1254 pixeles, seis poses.
+
+El generador dibujo un fondo cuadriculado opaco y distribuyo las poses en dos filas. Se conserva el bitmap original. `src/game/characters/trump/trumpDodgeFrames.js` contiene siluetas SVG de visualizacion y limites medidos por figura; no presupone celdas cuadradas ni modifica pixeles. Se comprobaron las seis poses sobre fondo oscuro y dentro de la arena.
+
+## Prompt utilizado
+
+Use case: stylized-concept. Create a NEW game sprite atlas using the attached image ONLY as visual reference for the same Donald Trump caricature: identical blond hair, orange face, navy suit, red tie, stocky body, thick black outlines and painterly fighting game shading. Exactly SIX full-body poses in a strict 3-column by 2-row grid. All face LEFT. Row 1: crouch anticipation bending knees; deep crouch dodge with head ducked and fists guarding face; rising from crouch. Row 2: jumping upward with knees tucked; airborne at apex knees tucked feet below hips; landing with knees flexed. Same physical body scale and camera in every cell, no stretching. Each cell square; character centered horizontally, lowest shoe at 92% of cell height; standing equivalent height 82% of cell, deep crouch naturally only 48% high, jump tucked body 65% high. Generous clear margins, no clipping, no cross-cell overlap. Render PNG with genuinely TRANSPARENT ALPHA background, alpha zero outside character including between limbs, absolutely NO painted checkerboard, no opaque white background, no scenery, no effects, no floor, no shadows, no text or grid lines. This is production sprite art directly composited over a dark game scene.

@@ -21,6 +21,8 @@ import { GameHud } from '../../ui/GameHud.jsx'
 import { IntroVideoOverlay } from '../../ui/IntroVideoOverlay.jsx'
 import { PauseMenu } from '../../ui/PauseMenu.jsx'
 import { SpeechBubble } from '../../ui/SpeechBubble.jsx'
+import { BossAttackCue } from '../../ui/BossAttackCue.jsx'
+import { DOCUMENT_ATTACK } from '../../characters/corruptDocument/corruptDocumentConstants.js'
 
 export function OfficeScene({ onComplete }) {
   const completionTimer = useRef(0)
@@ -541,6 +543,7 @@ export function OfficeScene({ onComplete }) {
 
             {enemyState.active ? (
               <div>
+                {enemyState.mode === 'throw_attack' && <BossAttackCue x={enemyState.x + ENEMY.width / 2} y={enemyState.y - 38} label="BOLA DE PAPEL" progress={enemyState.attackTimer / DOCUMENT_ATTACK.prepareTime} released={enemyState.shotReleased} />}
                 {showHitboxes ? (
                   <div
                     className="enemy-hitbox"
@@ -597,7 +600,7 @@ export function OfficeScene({ onComplete }) {
               } ${utilityIsActive ? 'utility-aura' : ''}`}
               style={{
                 left: `${playerFootX - currentFootAnchorX}px`,
-                top: `${playerFootY - currentSpriteLayout.height + PLAYER_VISUAL.groundSink}px`,
+                top: `${playerFootY - currentSpriteLayout.footAnchorY + PLAYER_VISUAL.groundSink}px`,
                 width: `${currentSpriteLayout.width}px`,
                 height: `${currentSpriteLayout.height}px`,
               }}

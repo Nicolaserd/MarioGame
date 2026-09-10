@@ -1,6 +1,7 @@
 ﻿export const PLAYER = {
   width: 96,
   height: 172,
+  crouchHeight: 131,
   health: 5,
   pizzaAmmo: 5,
 }
@@ -8,7 +9,7 @@
 export const PLAYER_VISUAL = {
   idleHeight: 172,
   referenceHeight: 910,
-  crouchHeightRatio: 0.6,
+  crouchHeightRatio: 131 / 172,
   groundSink: 1,
 }
 

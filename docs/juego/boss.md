@@ -26,6 +26,8 @@ IA en `useBossAI.js`:
 - Estados: `idle`, `chase`, `keep_distance`, `throw_attack`, `retreat`, `dodge`, `airborne`, `stunned`.
 - Mantiene distancia optima, persigue si esta lejos y retrocede si esta cerca.
 - Lanza bolas de papel con preparacion y cooldown desde estados de suelo (`chase`, `keep_distance`, `retreat`), asi que puede disparar desde distintas distancias.
+- `DOCUMENT_ATTACK` define 0,58 segundos de preparacion y 0,94 de accion total. Mantiene reposo durante la carga y muestra lanzamiento al liberar la bola; `BossAttackCue` refleja el mismo temporizador.
+- Conserva orientacion durante el ataque; la bola sale por la mano correspondiente. Aturdir cancela el disparo pendiente y cambia el sprite inmediatamente.
 - La frecuencia de disparo es relativamente alta: `attackCooldownMin = 1.05`, `attackCooldownMax = 2`, `attackChance = 0.78`.
 - Detecta amenazas entrantes y puede agacharse, saltar o saltar hacia atras.
 - Usa azar, delay de reaccion y cooldown para no esquivar perfecto siempre.

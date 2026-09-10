@@ -19,6 +19,8 @@ Reglas:
 - Rebota una vez contra el piso y luego desaparece.
 - La municion se regenera con timer propio.
 - Hitbox real por `getPizzaHitbox`.
+- `marioCombat.js` define la salida desde la mano, reflejada al mirar a la izquierda y mas baja al agacharse. Pizzas y botellas comparten estas referencias entre capitulos.
+- La torre reutiliza dimensiones, velocidad, gravedad y rebote; conserva dano propio para su boss. Consultar [Torre Dorada](torre.md).
 
 ## Util
 

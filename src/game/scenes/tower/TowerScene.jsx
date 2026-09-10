@@ -7,6 +7,8 @@ import { PauseMenu } from '../../ui/PauseMenu.jsx'
 import { SpeechBubble } from '../../ui/SpeechBubble.jsx'
 import { TrumpSprite } from '../../characters/trump/TrumpSprite.jsx'
 import { TRUMP } from '../../characters/trump/trumpConstants.js'
+import { BossAttackCue } from '../../ui/BossAttackCue.jsx'
+import { getActiveGoldWarnings } from './towerAttacks.js'
 import * as mario from '../../characters/mario/marioAssets.js'
 import { getSpriteLayout } from '../../characters/mario/marioLayout.js'
 import { createTowerBattle, stepTower } from './towerSimulation.js'
@@ -20,12 +22,20 @@ function heroSprite(s) {
   if (s.mode === 'dying' || s.mode === 'lost') return mario.death3
   if (p.shield) return mario.shield2
   if (p.hurt) return mario.attacked
-  if (p.shot > 0.1) return mario.throwPose
   if (p.vy < 0) return mario.jump
   if (p.vy > 0) return mario.fall
   if (p.crouched) return mario.crouch
-  if (p.moving) return [mario.run1, mario.run2, mario.run3][Math.floor(s.time * 9) % 3]
-  return Math.floor(s.time * 2) % 2 ? mario.idle1 : mario.idle2
+  if (p.throwTimer > 0) return mario.throwPose
+  if (p.moving) return [mario.run1, mario.run2, mario.run3][Math.floor(p.runClock / 0.11) % 3]
+  return Math.floor(p.idleClock * 2) % 2 ? mario.idle2 : mario.idle1
+}
+
+function defenseHint(boss) {
+  if (boss.pose === 'duck') return ['ESQUIVA BAJA', 'Espera a que se levante o lanza desde abajo.']
+  if (boss.pose === 'jump') return ['SALTO EVASIVO', 'Busca su aterrizaje para contraatacar.']
+  if (['recover', 'dodge-recover'].includes(boss.pose)) return ['VULNERABLE', '¡Aprovecha la recuperación para lanzar!']
+  if (boss.pose === 'angry') return ['FASE 2 · FIEBRE DEL ORO', 'Esquiva más a menudo. Sus lanzamientos lo dejan expuesto.']
+  return ['EN GUARDIA', 'Puede esquivar. Ataca mientras lanza o se recupera.']
 }
 
 export function TowerScene({ onRestartCampaign }) {
@@ -65,34 +75,37 @@ export function TowerScene({ onRestartCampaign }) {
     return () => observer.disconnect()
   }, [])
   const p = view.player
+  const [defenseLabel, defenseTip] = defenseHint(view.boss)
   const sprite = heroSprite(view)
   const spriteLayout = getSpriteLayout(sprite)
   const footAnchor = p.facing < 0 ? spriteLayout.width - spriteLayout.footAnchorX : spriteLayout.footAnchorX
   const finished = view.mode === 'won' || view.mode === 'lost'
   return <section ref={viewport} className={`tower-viewport ${paused ? 'tower-paused' : ''} ${reducedMotion ? 'tower-reduced' : ''}`} aria-label="Batalla 2: La Torre Dorada">
-    <div className="tower-stage" style={{ transform: `translate(-50%, -50%) scale(${scale})` }} data-mode={view.mode}>
+    <div className={`tower-stage ${view.phase === 2 ? 'tower-enraged' : ''}`} style={{ transform: `translate(-50%, -50%) scale(${scale})` }} data-mode={view.mode}>
       <TowerBackdrop />
       <header className="tower-chapter"><span>02 / LA TORRE DORADA</span><h1>El último trato</h1><small>DONALD TRUMP · {view.phase === 2 ? 'FASE 2 · FIEBRE DEL ORO' : 'EL MAGNATE DE LA AZOTEA'}</small></header>
       <div className="tower-action">
-        {view.boss.pose === 'windup' && view.attack?.type === 'gold' && view.targets.map((x, i) => <div key={i} className="gold-warning" style={{ left: x }} />)}
-        <div className={`tower-boss ${hitboxes ? 'debug-box' : ''}`} style={{ left: view.boss.x, top: view.boss.y, width: view.boss.width, height: view.boss.height }}><TrumpSprite pose={view.boss.pose} hurt={view.boss.hurt} poseTime={view.boss.poseTime} attack={view.attack?.type} /></div>
+        {getActiveGoldWarnings(view).map(x => <div key={x} className="gold-warning" style={{ left: x }} />)}
+        {view.mode === 'active' && view.attack && <BossAttackCue x={view.boss.x + view.boss.width / 2} y={view.boss.y - 36} label={view.attack.label} progress={view.boss.pose === 'windup' ? view.boss.poseTime / view.windupDuration : 1} released={view.boss.pose === 'attack'} />}
+        <div className="tower-boss-shadow" style={{ left: view.boss.x, top: TOWER.floor - 3, width: view.boss.width, transform: `scaleX(${Math.max(0.5, 1 - (TOWER.floor - view.boss.y - view.boss.height) / 240)})` }} />
+        <div className={`tower-boss ${hitboxes ? 'debug-box' : ''}`} style={{ left: view.boss.x, top: view.boss.y, width: view.boss.width, height: view.boss.height }}><TrumpSprite {...view.boss} attack={view.attack?.type} /></div>
         <div className={`tower-hero ${p.hurt ? 'hero-hurt' : ''} ${p.utility ? 'hero-utility' : ''} ${view.mode === 'dying' ? 'hero-dying' : ''} ${hitboxes ? 'debug-box' : ''}`} style={{ left: p.x, top: p.y, width: p.width, height: p.height }}>
-          <img src={sprite} alt="Mario" draggable="false" style={{ transform: `scaleX(${p.facing})`, width: spriteLayout.width, height: spriteLayout.height, left: p.width / 2 - footAnchor }} />
+          <img src={sprite} alt="Mario" draggable="false" style={{ transform: `scaleX(${p.facing})`, width: spriteLayout.width, height: spriteLayout.height, left: p.width / 2 - footAnchor, bottom: -spriteLayout.bottomOffset }} />
           {p.shield > 0 && <i className="tower-shield" />}
         </div>
         {view.projectiles.map(q => <div key={q.id} className={`tower-projectile projectile-${q.type} ${hitboxes ? 'debug-box' : ''}`} style={{ left: q.x, top: q.y, width: q.width, height: q.height }}>
-          {q.friendly ? <img src={q.type === 'pizza' ? mario.thrownPizza : mario.bottleIcon} alt="" /> : q.type === 'contract' ? '≡' : q.type === 'gold' ? '$' : null}
+          {q.friendly ? <img src={q.type === 'pizza' ? mario.thrownPizza : mario.bottleIcon} alt="" draggable="false" style={{ transform: `scaleX(${q.vx < 0 ? -1 : 1})` }} /> : q.type === 'contract' ? '≡' : q.type === 'gold' ? '$' : null}
         </div>)}
         {view.mode !== 'intro' && <SpeechBubble text={view.speech} x={510} y={168} charsPerSecond={36} className="tower-speech" />}
       </div>
       <GameHud playerHealth={p.health} maxHealth={HERO.health} pizzaAmmo={p.ammo} utilityCharges={p.charges} maxUtilityCharges={HERO.utilityCharges}
         enemyName="Donald Trump" round="02"
         enemy={{ active: true, health: view.boss.health }} maxEnemyHealth={TRUMP.health} heartIcon={mario.heartIcon} pizzaIcon={mario.pizzaIcon} utilityIcon={mario.bottleIcon} onOpenMenu={openMenu} />
-      <div className="tower-status"><span>{view.attack ? view.attack.label : 'ENCUENTRA TU MOMENTO'}</span><strong>{view.attack ? view.attack.hint : 'P: pizza · G: botellas · O: escudo'}</strong><small>{p.shieldCooldown > 0 ? `Escudo en ${Math.ceil(p.shieldCooldown)} s` : 'Escudo listo'}{p.utility > 0 ? ` · Botellas: ${Math.ceil(p.utility)} s` : ''}</small></div>
+      <div className="tower-status"><span>{view.attack ? view.attack.label : defenseLabel}</span><strong>{view.attack ? view.attack.hint : defenseTip}</strong><small>{p.shieldCooldown > 0 ? `Escudo en ${Math.ceil(p.shieldCooldown)} s` : 'Escudo listo'}{p.utility > 0 ? ` · Botellas: ${Math.ceil(p.utility)} s` : ''}</small></div>
       {view.mode === 'intro' && <div className="tower-overlay"><div className="tower-card" role="dialog" aria-modal="true" aria-labelledby="tower-title">
         <span className="tower-eyebrow">DOCUMENTO CORRUPTO DERROTADO · CAPÍTULO 02</span><h2 id="tower-title">La Torre<br /><em>Dorada.</em></h2>
         <p>El dato perdido está en la última planta. Su dueño tiene otros planes.</p>
-        <blockquote>{TRUMP.intro}</blockquote><p className="tower-tip">120 de vida · 3 ataques · 2 fases<br />Salta el muro. Esquiva el oro. Devuelve el trato con una pizza.</p>
+        <blockquote>{TRUMP.intro}</blockquote><p className="tower-tip">{TRUMP.health} de vida · 3 ataques · 2 fases<br />Salta y se agacha para esquivar. A mitad de vida acelera ataques y esquivas. Golpéalo mientras lanza o se recupera.<br />P: pizza · G: botellas · O: escudo</p>
         <button autoFocus type="button" onClick={start}>¡Vamos por ese dato! <span>→</span></button><small>Vida y recursos restaurados. Reintento desde esta batalla.</small>
       </div></div>}
       {finished && <div className="tower-overlay"><div className="tower-card" role="dialog" aria-modal="true" aria-labelledby="tower-result">

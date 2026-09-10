@@ -1,9 +1,10 @@
 import { BOSS_STATES, stunBoss } from '../../../hooks/useBossAI.js'
 import { bottleIcon, push1, vomitGas } from '../../characters/mario/marioAssets.js'
 import { PLAYER, PLAYER_VISUAL, PUSH } from '../../characters/mario/marioConstants.js'
-import { enemyBall } from '../../characters/corruptDocument/corruptDocumentAssets.js'
+import { enemyBall, enemyStunned } from '../../characters/corruptDocument/corruptDocumentAssets.js'
 import { ENEMY } from '../../characters/corruptDocument/corruptDocumentConstants.js'
-import { BOTTLE, ENEMY_BALL, GAS, PIZZA, THROW } from '../../projectiles/projectileTypes.js'
+import { BOTTLE, ENEMY_BALL, GAS, PIZZA } from '../../projectiles/projectileTypes.js'
+import { getMarioLaunchOrigin } from '../../characters/mario/marioCombat.js'
 import { clamp, intersects } from '../../physics/collision.js'
 import { WORLD, floorSurfaceY } from './officeConstants.js'
 import { ENEMY_DEATH_FRAMES, getFloorSegmentAtFoot } from './officeLayout.js'
@@ -12,15 +13,11 @@ import { triggerPlayerHurt } from './officePlayer.js'
 
 export function createPizza(player) {
   const direction = player.facing < 0 ? -1 : 1
-  const handX =
-    direction > 0
-      ? player.x + PLAYER.width / 2 + THROW.handOffsetX
-      : player.x + PLAYER.width / 2 - THROW.handOffsetX - PIZZA.width
+  const origin = getMarioLaunchOrigin(player, PIZZA)
 
   return {
     id: crypto.randomUUID?.() ?? `${performance.now()}-${Math.random()}`,
-    x: handX,
-    y: player.y + THROW.handOffsetY,
+    ...origin,
     vx: PIZZA.speed * direction,
     vy: -80,
     damage: PIZZA.damage,
@@ -58,17 +55,13 @@ export function createGas(player) {
 
 export function createBottle(player) {
   const direction = player.facing < 0 ? -1 : 1
-  const x =
-    direction > 0
-      ? player.x + PLAYER.width / 2 + BOTTLE.handOffsetX
-      : player.x + PLAYER.width / 2 - BOTTLE.handOffsetX - BOTTLE.width
+  const origin = getMarioLaunchOrigin(player, BOTTLE)
 
   return {
     id: crypto.randomUUID?.() ?? `${performance.now()}-${Math.random()}`,
     type: 'bottle',
     image: bottleIcon,
-    x,
-    y: player.y + BOTTLE.handOffsetY,
+    ...origin,
     vx: BOTTLE.speed * direction,
     vy: -110,
     width: BOTTLE.width,
@@ -85,7 +78,7 @@ export function createBottle(player) {
 export function createEnemyBall(enemy, player) {
   const playerCenterX = player.x + PLAYER.width / 2
   const playerCenterY = player.y + PLAYER.height * 0.42
-  const initialDirection = playerCenterX >= enemy.x + ENEMY.width / 2 ? 1 : -1
+  const initialDirection = enemy.facing < 0 ? -1 : 1
   const direction = initialDirection
   const x =
     direction > 0
@@ -109,7 +102,7 @@ export function createEnemyBall(enemy, player) {
   }
 
   const dx = targetX - launchCenterX
-  const shotDirection = dx >= 0 ? 1 : -1
+  const shotDirection = direction
   const vx = ENEMY_BALL.speed * shotDirection
   const flightTime = Math.max(0.25, Math.abs(dx) / ENEMY_BALL.speed)
   const rawVy =
@@ -178,6 +171,7 @@ export function getEnemyHitbox(enemy) {
 }
 
 export function getPlayerHitbox(player) {
+  if (player.crouching) return { x: player.x, y: player.y + PLAYER.height - PLAYER.crouchHeight, width: PLAYER.width, height: PLAYER.crouchHeight }
   const layout = getSpriteLayout(player.sprite)
   const footY = player.y + PLAYER.height
   const top = Math.max(
@@ -312,6 +306,7 @@ export function applyEnemyProjectileHits(enemy, pizzas, utilityProjectiles) {
       nextEnemy.health = Math.max(0, nextEnemy.health - projectile.damage)
       if (projectile.type === 'gas' && nextEnemy.health > 0) {
         stunBoss(nextEnemy)
+        nextEnemy.sprite = enemyStunned
       }
       return false
     }
