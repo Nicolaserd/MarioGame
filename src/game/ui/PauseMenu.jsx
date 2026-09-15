@@ -5,6 +5,8 @@
   reducedMotion,
   onClose,
   onReset,
+  currentLevel,
+  onSelectLevel,
   onSetPanel,
   onSetShowHitboxes,
   onSetReducedMotion,
@@ -35,7 +37,9 @@
               ? 'Movimientos'
               : activePanel === 'settings'
                 ? 'Ajustes'
-                : 'Mario en busca del dato perdido'}
+                : activePanel === 'levels'
+                  ? 'Elegir nivel'
+                  : 'Mario en busca del dato perdido'}
           </h2>
         </div>
 
@@ -43,6 +47,9 @@
           <div className="pause-menu-actions">
             <button type="button" className="pause-primary" onClick={onClose}>
               Continuar
+            </button>
+            <button type="button" onClick={() => onSetPanel('levels')}>
+              Elegir nivel
             </button>
             <button type="button" onClick={() => onSetPanel('controls')}>
               Como jugar
@@ -56,23 +63,46 @@
           </div>
         ) : null}
 
+        {activePanel === 'levels' ? (
+          <div className="pause-panel">
+            <p>Cambiar de nivel inicia ese nivel desde el principio.</p>
+            {[
+              { id: 'office', label: 'Nivel 1 · La oficina' },
+              { id: 'tower', label: 'Nivel 2 · La Torre Dorada' },
+              { id: 'syt', label: 'Nivel 3 · Sistemas y Tecnología' },
+            ].map((level) => (
+              <button
+                key={level.id}
+                type="button"
+                aria-current={currentLevel === level.id ? 'true' : undefined}
+                onClick={() => currentLevel === level.id ? onClose() : onSelectLevel(level.id)}
+              >
+                {level.label}{currentLevel === level.id ? ' (actual · continuar)' : ''}
+              </button>
+            ))}
+            <button type="button" onClick={() => onSetPanel('main')}>
+              Volver
+            </button>
+          </div>
+        ) : null}
+
         {activePanel === 'controls' ? (
           <div className="pause-panel">
             <div className="control-list">
               <span>A / Flecha izquierda</span>
-              <strong>Mover a la izquierda</strong>
+              <strong>{currentLevel === 'syt' ? 'Frenar (SyT se acerca)' : 'Mover a la izquierda'}</strong>
               <span>D / Flecha derecha</span>
-              <strong>Mover a la derecha</strong>
+              <strong>{currentLevel === 'syt' ? 'Acelerar el avance automático' : 'Mover a la derecha'}</strong>
               <span>W / Espacio / Flecha arriba</span>
               <strong>Saltar</strong>
               <span>S / Flecha abajo</span>
               <strong>Agacharse</strong>
-              <span>P</span>
+              {currentLevel !== 'syt' && <><span>P</span>
               <strong>Lanzar pizza / botella en util</strong>
               <span>G</span>
               <strong>Activar la util</strong>
               <span>O</span>
-              <strong>Escudo</strong>
+              <strong>Escudo</strong></>}
               <span>M</span>
               <strong>Forzar muerte</strong>
               <span>Escape</span>

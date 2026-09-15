@@ -1,0 +1,59 @@
+.syt-viewport { position: relative; height: 100svh; width: 100%; overflow: hidden; background: #111c22; color: #fff1d5; }
+.syt-stage { position: absolute; left: 50%; top: 50%; width: 960px; height: 560px; overflow: hidden; isolation: isolate; font-family: Georgia,serif; background: #536d68; }
+.syt-backdrop { position: absolute; inset: 0; overflow: hidden; background: linear-gradient(#172c36,#697d75); }
+.syt-ceiling { position: absolute; inset: 95px 0 auto; height: 52px; background: repeating-linear-gradient(90deg,#273f45 0 25px,#90a28e 25px 28px,#455f60 28px 120px); border-top: 5px solid #bdd0af; border-bottom: 5px solid #233f46; }
+.syt-room { position: absolute; top: 0; left: 0; width: 1440px; filter: saturate(.68) brightness(.84); }
+.syt-room-shade { position: absolute; inset: 108px 0 118px; background: linear-gradient(90deg,#142e3940,transparent 40%,#142e3920),linear-gradient(#17333b30,transparent 55%,#253a365c); }
+.syt-floor { position: absolute; top: 442px; width: 100%; bottom: 0; background: repeating-linear-gradient(90deg,transparent 0 118px,#33494760 119px 122px),linear-gradient(#91a08b 0 8px,#4d6561 8px 20px,#33494d 20px 22px,#546762 22px 72px,#2b4146 72px); border-top: 4px solid #e1d6b1; }
+.syt-floor-edge { position: absolute; top: 453px; width: 100%; height: 8px; background: repeating-linear-gradient(125deg,#d0ac6a 0 15px,#344a4b 15px 30px); opacity: .8; }
+.syt-world { position: absolute; inset: 0; pointer-events: none; }
+.syt-chapter { position: absolute; top: 107px; left: 30px; color: #e8e2bf; text-shadow: 0 2px 6px #132c32; }
+.syt-chapter span { display: block; font: 9px monospace; letter-spacing: 2px; }
+.syt-chapter strong { font: italic 18px Georgia,serif; }
+.syt-pursuer { position: absolute; width: 213px; height: 213px; filter: drop-shadow(0 3px 2px #162b3e70); }
+.syt-pursuer > span { position: absolute; left: 40px; bottom: -17px; padding: 2px 8px; background: #263c3e; border: 1px solid #e0b67d; font: 9px monospace; color: #ffdaa5; }
+.syt-sprite { display: block; width: 100%; height: 100%; overflow: hidden; }
+.syt-pose-laugh { animation: syt-laugh .2s ease-in-out infinite alternate; transform-origin: center bottom; }
+.syt-pose-react { transform: rotate(-7deg); transform-origin: center bottom; }
+.syt-player { position: absolute; }
+.syt-ground-shadow { position: absolute; height: 9px; background: #10282c; border-radius: 50%; opacity: .38; filter: blur(2px); }
+.syt-player img { position: absolute; max-width: none; filter: drop-shadow(0 4px 2px #20343d66); }
+.syt-hurt { animation: syt-hurt .12s steps(2) infinite; }
+.syt-hazard { position: absolute; filter: drop-shadow(0 2px 3px #102e3977); }
+.syt-hazard-minion .syt-sprite { width: 110px; height: 110px; position: absolute; left: -23px; bottom: 0; transform: scaleX(-1); }
+.syt-hazard-chip .syt-sprite { position: relative; width: 100%; height: 100%; filter: drop-shadow(0 0 4px #9cf4fc); }
+.syt-chip-trail { position: absolute; right: 29px; top: 8px; width: 39px; height: 10px; background: linear-gradient(90deg,transparent,#8aeaff99); clip-path: polygon(0 30%,100% 0,100% 100%,0 70%); }
+.syt-hazard-shadow { position: absolute; left: -4px; right: -4px; bottom: -4px; height: 7px; border-radius: 50%; background: #10262c70; filter: blur(2px); }
+.syt-enemy-mark { position: absolute; left: 40%; top: -25px; width: 18px; border-radius: 50%; text-align: center; color: #fff3cf; background: #87493c; border: 1px solid #f4c791; font: bold 14px monospace; }
+.syt-platform { position: absolute; background: linear-gradient(#bcf0c7 0 4px,#b39969 4px 10px,#203c40 10px 15px,transparent 15px); border-left: 10px solid #77978a; border-right: 10px solid #77978a; box-shadow: 0 -3px 10px #baf7c533; }
+.syt-platform::before { content: ''; position: absolute; top: 0; left: -10px; right: -10px; height: 4px; background: #d7ffd4; box-shadow: 0 0 7px #c0facf80; }
+.syt-platform::after { content: ''; position: absolute; left: -14px; right: -14px; height: 6px; bottom: 0; background: #304b4c; border-radius: 2px; }
+.syt-platform span { display: block; width: max-content; margin: 20px auto 0; padding: 3px 6px; text-align: center; background: #183c38e8; border: 1px solid #b3d5af; font: 9px monospace; color: #d5f6c4; }
+.syt-usb { position: absolute; width: 32px; height: 40px; padding-top: 12px; border: 2px solid #effcd3; border-radius: 4px; color: #fff9cd; background: #418e78; box-shadow: 0 0 18px #c6ffc89a; text-align: center; font: bold 10px/24px monospace; }
+.syt-usb i { position: absolute; top: -12px; left: 6px; width: 16px; height: 12px; background: repeating-linear-gradient(90deg,#d9d9b9 0 5px,#405f60 5px 8px); border: 2px solid #e4e9d2; }
+.syt-usb small { position: absolute; left: 50%; bottom: -24px; transform: translateX(-50%); white-space: nowrap; padding: 3px 5px; border-radius: 2px; background: #193b33ed; color: #d6f9bc; font: bold 9px monospace; }
+.syt-finish { position: absolute; top: 193px; width: 140px; height: 249px; border: 10px solid #c3b780; border-bottom: 0; background: repeating-linear-gradient(0deg,#a4e8c424 0 2px,transparent 2px 7px),#224e48; text-align: center; box-shadow: 0 0 30px #b9f0b933,inset 0 0 35px #7ce6a044; }
+.syt-finish span { display: block; padding: 8px 0; background: #e1d5a6; color: #234c43; font: bold 10px monospace; }
+.syt-finish strong { display: block; margin-top: 35px; font: 20px Georgia; }.syt-finish i { font: 48px Georgia; color: #c2f4c7; }
+.syt-stage .fight-hud { top: 17px; }
+.syt-stage .fight-enemy .fight-fill { margin-left: 0; background: linear-gradient(90deg,#488675,#c1e1a1); }
+.fight-runner-usb { font: 9px monospace; color: #d5ebc4; }.fight-runner-usb strong { font-size: 13px; }
+.fight-runner-gap { margin-left: auto; color: #ecc495; font: 8px monospace; }
+.syt-timer { position: absolute; top: 105px; right: 31px; width: 116px; padding: 4px 12px 6px; text-align: center; background: #20353ded; border: 1px solid #b6bd9277; box-shadow: 0 4px 12px #172d3755; }
+.syt-timer small { display: block; font: 8px monospace; letter-spacing: 2px; color: #c7c6a2; }.syt-timer strong { font: bold 31px/1.15 monospace; color: #f4e4b4; font-variant-numeric: tabular-nums; }
+.syt-timer-urgent { border-color: #efae81; background: #613e38ed; }.syt-timer-urgent strong { color: #ffe2b9; }
+.syt-stage .syt-speech { width: 220px; max-width: 220px; min-height: 38px; padding: 9px 12px; background: #f3e5c9f0; color: #343f3b; border: 2px solid #9b8c6c; border-radius: 9px; font: italic 13px/1.3 Georgia; z-index: 5; transform: none; }
+.syt-cue { position: absolute; top: 106px; left: 335px; width: 320px; height: 37px; padding: 3px 10px; text-align: center; text-shadow: 0 2px 4px #102931; }
+.syt-cue span { display: block; font: 8px/11px monospace; letter-spacing: 1px; color: #e8e6c8; }.syt-cue strong { display: block; font: bold 17px/20px Georgia; color: #f6e4b5; }
+.syt-cue-active { border-left: 3px solid #eed19a; border-right: 3px solid #eed19a; background: #213941f2; }
+.syt-cue-optional strong { color: #d0f7be; }
+.syt-cue-charge { position: absolute; height: 2px; left: 0; bottom: -3px; width: 100%; background: #f6d79b; transform-origin: left; }
+.syt-status { position: absolute; left: 0; right: 0; bottom: 0; height: 68px; padding: 0 28px; display: flex; align-items: center; gap: 15px; background: #172d35ed; border-top: 1px solid #d9c99955; color: #becdc4; }
+.syt-status > span { font: 9px monospace; letter-spacing: 1px; color: #ecd4a2; white-space: nowrap; }.syt-status i { display: inline-block; width: 5px; height: 5px; margin-right: 6px; background: #ecba76; border-radius: 50%; }
+.syt-status p { margin: 0; font: 10px monospace; }.syt-status kbd { font: bold 10px monospace; color: #ece3c7; }.syt-status b { margin: 0 5px; }.syt-status small { margin-left: auto; font: 9px monospace; }
+.syt-hitbox { position: absolute; border: 1px solid #6bffb5; }.syt-show-hitbox { outline: 1px solid #ff775b; }
+.syt-stage .pause-overlay { z-index: 30; }
+.syt-paused .syt-world *, .syt-reduced * { animation-play-state: paused !important; }
+@keyframes syt-laugh { to { transform: rotate(3deg) translateY(-3px); } }
+@keyframes syt-hurt { to { opacity: .4; } }
+@media (prefers-reduced-motion: reduce) { .syt-stage * { animation: none !important; } }

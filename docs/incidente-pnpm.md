@@ -18,7 +18,7 @@ La ultima revision sincroniza avisos, poses y proyectiles de ambos jefes; cancel
 
 ## Entorno pendiente
 
-Consulta de solo lectura al registro oficial el 2026-09-10: pnpm 12.3.4 sigue siendo latest; [Vite](https://registry.npmjs.org/vite/latest) publica 8.3.0 y [React](https://registry.npmjs.org/react/latest)/React DOM 19.3.0. El proyecto conserva Vite 8.2.2 y React/React DOM 19.2.8. No se instalaron actualizaciones. Antes de instalarlas, volver a verificar versiones, compatibilidad y avisos oficiales de [entorno](../reglas/entorno.md).
+Consulta de solo lectura al registro oficial el 2026-09-15: pnpm publica 12.4.2; [Vite](https://registry.npmjs.org/vite/latest), 8.3.0; [React](https://registry.npmjs.org/react/latest)/React DOM, 19.3.0; plugin-react, 6.1.1. El proyecto conserva pnpm 12.3.4, Vite 8.2.2 y React/React DOM 19.2.8. No se instalaron actualizaciones. Antes de instalarlas, volver a verificar versiones, compatibilidad y avisos oficiales de [entorno](../reglas/entorno.md).
 
 Siguen pendientes la actualizacion, `pnpm check:versions`, `pnpm check:security`, `pnpm check:docs` y la resolucion de la alerta. Los limites y enlaces locales de los documentos editados se comprobaron manualmente; esto no sustituye esos comandos. Las pruebas funcionales del juego no certifican la seguridad del gestor.
 

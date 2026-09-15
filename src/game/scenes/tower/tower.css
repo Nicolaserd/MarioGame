@@ -31,11 +31,8 @@
 .tower-stage .game-menu-button { z-index: 10; }.tower-stage .enemy-speech { z-index: 7; width: 230px; max-width: 260px; font-size: 15px; }
 .tower-status { position: absolute; top: 467px; left: 32px; right: 32px; z-index: 6; display: flex; align-items: center; gap: 18px; font-family: monospace; }
 .tower-status > span { color: #f6d498; font-size: 10px; letter-spacing: 1px; padding: 8px 10px; border: 1px solid #f6d49855; }.tower-status strong { font-size: 12px; font-weight: 400; }.tower-status small { margin-left: auto; color: #c6b8a8; }
-.tower-overlay { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: #101827ab; backdrop-filter: blur(5px); }
-.tower-card { width: 410px; padding: 28px 35px; border: 1px solid #d4ac66; background: linear-gradient(135deg,#26344b,#172132); box-shadow: 0 20px 80px #0007, inset 0 0 0 5px #d4ac6610; }
-.tower-eyebrow { font: 9px monospace; letter-spacing: 2px; color: #efce92; }.tower-card h2 { margin: 12px 0; font: 48px/1 Georgia; font-weight: 400; }.tower-card h2 em { color: #efd097; font-weight: 400; }
-.tower-card p { font: 14px/1.5 Georgia; color: #e2d9cc; }.tower-card blockquote { margin: 15px 0; border-left: 2px solid #d4ac66; padding-left: 15px; color: #eed3a2; font: italic 14px/1.4 Georgia; }.tower-card .tower-tip { font: 11px/1.6 monospace; color: #b9c8d8; }
-.tower-card button { width: 100%; margin-top: 12px; padding: 12px 16px; background: #efcf96; color: #202a3a; border: 1px solid #ffe7b4; font: bold 14px Georgia; cursor: pointer; text-align: left; }.tower-card button span { float: right; }.tower-card button:hover { background: #ffe8bc; }.tower-card button:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }.tower-card > small { display: block; margin-top: 12px; font: 9px monospace; color: #a8b9cb; }.tower-card .tower-secondary { background: transparent; color: #efcf96; }
+.tower-level-overlay .level-card { width: 450px; }
+.tower-level-overlay .tower-tip { font: 11px/1.6 monospace; color: #b9c8d8; }
 .tower-stage .pause-overlay { z-index: 30; }.tower-paused .tower-action *, .tower-paused .tower-backdrop *, .tower-reduced * { animation-play-state: paused !important; }
 .debug-box { outline: 1px solid #76ffb4; }
 @keyframes tower-hero-death { 40% { transform: translateY(-80px); } to { transform: translateY(240px) rotate(-25deg); opacity: 0; } }

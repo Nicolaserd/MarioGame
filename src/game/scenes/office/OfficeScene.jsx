@@ -24,7 +24,7 @@ import { SpeechBubble } from '../../ui/SpeechBubble.jsx'
 import { BossAttackCue } from '../../ui/BossAttackCue.jsx'
 import { DOCUMENT_ATTACK } from '../../characters/corruptDocument/corruptDocumentConstants.js'
 
-export function OfficeScene({ onComplete }) {
+export function OfficeScene({ onComplete, onSelectLevel }) {
   const completionTimer = useRef(0)
   const viewportRef = useRef(null)
   const bossAI = useBossAI()
@@ -628,6 +628,8 @@ export function OfficeScene({ onComplete }) {
         <div className="utility-flash-screen" aria-hidden="true" />
 
         <PauseMenu
+          currentLevel="office"
+          onSelectLevel={onSelectLevel}
           isOpen={isMenuOpen}
           activePanel={activeMenuPanel}
           showHitboxes={showHitboxes}

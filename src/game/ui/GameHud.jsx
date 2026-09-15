@@ -10,10 +10,10 @@ function Resource({ label, value, max, icon }) {
 export function GameHud({
   playerHealth, maxHealth, pizzaAmmo, utilityCharges, maxUtilityCharges,
   enemy, maxEnemyHealth, heartIcon, pizzaIcon, utilityIcon, onOpenMenu,
-  enemyName = 'Documento Corrupto', round = '01',
+  enemyName = 'Documento Corrupto', round = '01', runner,
 }) {
   const health = Math.max(0, Math.min(maxHealth, playerHealth))
-  const bossHealth = Math.max(0, Math.min(maxEnemyHealth, enemy.health))
+  const bossHealth = runner ? runner.progress : Math.max(0, Math.min(maxEnemyHealth, enemy.health))
   return <div className="fight-hud">
     <div className="fight-side fight-player">
       <div className="fight-name"><span>JUGADOR 01</span><strong>MARIO</strong><small>{health} / {maxHealth}</small></div>
@@ -21,18 +21,20 @@ export function GameHud({
         <div className="fight-fill" style={{ width: `${health / maxHealth * 100}%` }} />
       </div>
       <div className="fight-resources">
-        <Resource label="PIZZA" value={pizzaAmmo} max={5} icon={pizzaIcon} />
-        <Resource label="GASEOSA" value={utilityCharges} max={maxUtilityCharges} icon={utilityIcon} />
+        {runner ? <><span className="fight-runner-usb">USB <strong>{runner.collected}</strong> · +1 VIDA</span><span className="fight-runner-gap">{runner.pressure}</span></> : <>
+          <Resource label="PIZZA" value={pizzaAmmo} max={5} icon={pizzaIcon} />
+          <Resource label="GASEOSA" value={utilityCharges} max={maxUtilityCharges} icon={utilityIcon} />
+        </>}
         <img className="fight-heart" src={heartIcon} alt="" />
       </div>
     </div>
-    <button className="fight-round" type="button" aria-label="Abrir menu del juego" onClick={onOpenMenu}><small>ROUND</small><strong>{round}</strong><span>Ⅱ</span></button>
+    <button className="fight-round" type="button" aria-label="Abrir menu del juego" onClick={onOpenMenu}><small>{runner ? 'NIVEL' : 'ROUND'}</small><strong>{round}</strong><span>Ⅱ</span></button>
     <div className="fight-side fight-enemy">
-      <div className="fight-name"><span>{enemy.active ? 'BOSS' : 'EN ESPERA'}</span><strong>{enemyName}</strong><small>{bossHealth} / {maxEnemyHealth}</small></div>
-      <div className="fight-track" role="progressbar" aria-label={`Vida de ${enemyName}`} aria-valuemin={0} aria-valuemax={maxEnemyHealth} aria-valuenow={bossHealth}>
-        <div className="fight-fill" style={{ width: `${bossHealth / maxEnemyHealth * 100}%` }} />
+      <div className="fight-name"><span>{runner ? 'ESCAPE' : enemy.active ? 'BOSS' : 'EN ESPERA'}</span><strong>{enemyName}</strong><small>{runner ? `${bossHealth}%` : `${bossHealth} / ${maxEnemyHealth}`}</small></div>
+      <div className="fight-track" role="progressbar" aria-label={runner ? 'Recorrido hasta la meta' : `Vida de ${enemyName}`} aria-valuemin={0} aria-valuemax={runner ? 100 : maxEnemyHealth} aria-valuenow={bossHealth}>
+        <div className="fight-fill" style={{ width: `${runner ? bossHealth : bossHealth / maxEnemyHealth * 100}%` }} />
       </div>
-      <div className="fight-opponent-note">{enemy.active ? 'LEE SUS ATAQUES · ELIGE TU MOMENTO' : 'AVANZA PARA INICIAR EL COMBATE'}</div>
+      <div className="fight-opponent-note">{runner ? runner.note : enemy.active ? 'LEE SUS ATAQUES · ELIGE TU MOMENTO' : 'AVANZA PARA INICIAR EL COMBATE'}</div>
     </div>
   </div>
 }

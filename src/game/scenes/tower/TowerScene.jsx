@@ -5,6 +5,7 @@ import { createEmptyKeys } from '../../engine/inputState.js'
 import { GameHud } from '../../ui/GameHud.jsx'
 import { PauseMenu } from '../../ui/PauseMenu.jsx'
 import { SpeechBubble } from '../../ui/SpeechBubble.jsx'
+import { LevelOverlay } from '../../ui/LevelOverlay.jsx'
 import { TrumpSprite } from '../../characters/trump/TrumpSprite.jsx'
 import { TRUMP } from '../../characters/trump/trumpConstants.js'
 import { BossAttackCue } from '../../ui/BossAttackCue.jsx'
@@ -38,7 +39,7 @@ function defenseHint(boss) {
   return ['EN GUARDIA', 'Puede esquivar. Ataca mientras lanza o se recupera.']
 }
 
-export function TowerScene({ onRestartCampaign }) {
+export function TowerScene({ onRestartCampaign, onSelectLevel, onComplete }) {
   const battle = useRef(createTowerBattle())
   const keysRef = useRef(createEmptyKeys())
   const isPausedRef = useRef(false)
@@ -102,19 +103,18 @@ export function TowerScene({ onRestartCampaign }) {
         enemyName="Donald Trump" round="02"
         enemy={{ active: true, health: view.boss.health }} maxEnemyHealth={TRUMP.health} heartIcon={mario.heartIcon} pizzaIcon={mario.pizzaIcon} utilityIcon={mario.bottleIcon} onOpenMenu={openMenu} />
       <div className="tower-status"><span>{view.attack ? view.attack.label : defenseLabel}</span><strong>{view.attack ? view.attack.hint : defenseTip}</strong><small>{p.shieldCooldown > 0 ? `Escudo en ${Math.ceil(p.shieldCooldown)} s` : 'Escudo listo'}{p.utility > 0 ? ` · Botellas: ${Math.ceil(p.utility)} s` : ''}</small></div>
-      {view.mode === 'intro' && <div className="tower-overlay"><div className="tower-card" role="dialog" aria-modal="true" aria-labelledby="tower-title">
-        <span className="tower-eyebrow">DOCUMENTO CORRUPTO DERROTADO · CAPÍTULO 02</span><h2 id="tower-title">La Torre<br /><em>Dorada.</em></h2>
+      {view.mode === 'intro' && <LevelOverlay className="tower-level-overlay" titleId="tower-title" eyebrow="DOCUMENTO CORRUPTO DERROTADO · CAPÍTULO 02" title={<>La Torre<br /><em>Dorada.</em></>}>
         <p>El dato perdido está en la última planta. Su dueño tiene otros planes.</p>
         <blockquote>{TRUMP.intro}</blockquote><p className="tower-tip">{TRUMP.health} de vida · 3 ataques · 2 fases<br />Salta y se agacha para esquivar. A mitad de vida acelera ataques y esquivas. Golpéalo mientras lanza o se recupera.<br />P: pizza · G: botellas · O: escudo</p>
         <button autoFocus type="button" onClick={start}>¡Vamos por ese dato! <span>→</span></button><small>Vida y recursos restaurados. Reintento desde esta batalla.</small>
-      </div></div>}
-      {finished && <div className="tower-overlay"><div className="tower-card" role="dialog" aria-modal="true" aria-labelledby="tower-result">
-        <span className="tower-eyebrow">{view.mode === 'won' ? 'ARCHIVO RECUPERADO' : 'CHECKPOINT · TORRE DORADA'}</span><h2 id="tower-result">{view.mode === 'won' ? '¡Trato cerrado!' : 'Una pizza más.'}</h2>
+      </LevelOverlay>}
+      {finished && <LevelOverlay className="tower-level-overlay" titleId="tower-result" eyebrow={view.mode === 'won' ? 'ARCHIVO RECUPERADO' : 'CHECKPOINT · TORRE DORADA'} title={view.mode === 'won' ? '¡Trato cerrado!' : 'Una pizza más.'}>
         <p>{view.mode === 'won' ? 'Mario: «El dato es de todos. Las pizzas… esas son mías.»' : 'El magnate ganó esta ronda. Ya conoces sus trucos.'}</p>
+        {view.mode === 'won' && <button type="button" onClick={onComplete}>Nivel 3 · Sistemas y Tecnología →</button>}
         <button type="button" onClick={restart}>{view.mode === 'won' ? 'Repetir la batalla' : 'Reintentar batalla'} →</button>
-        <button className="tower-secondary" type="button" onClick={onRestartCampaign}>Volver al primer capítulo</button>
-      </div></div>}
-      <PauseMenu isOpen={paused} activePanel={panel} showHitboxes={hitboxes} reducedMotion={reducedMotion} onClose={closeMenu} onReset={restart} onSetPanel={setPanel} onSetShowHitboxes={setHitboxes} onSetReducedMotion={setReducedMotion} />
+        <button className="level-secondary" type="button" onClick={onRestartCampaign}>Volver al primer capítulo</button>
+      </LevelOverlay>}
+      <PauseMenu currentLevel="tower" onSelectLevel={onSelectLevel} isOpen={paused} activePanel={panel} showHitboxes={hitboxes} reducedMotion={reducedMotion} onClose={closeMenu} onReset={restart} onSetPanel={setPanel} onSetShowHitboxes={setHitboxes} onSetReducedMotion={setReducedMotion} />
     </div>
   </section>
 }

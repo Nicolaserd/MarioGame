@@ -9,6 +9,7 @@ Este archivo es un indice. Abrir solamente la referencia relacionada con la tare
 | Ubicacion de modulos | [Estructura](docs/juego/estructura.md) |
 | Refactor de simulacion y modulos compartidos | [Organizacion](docs/juego/organizacion.md) |
 | Segunda batalla, escala y checkpoint | [Torre Dorada](docs/juego/torre.md) |
+| Nivel 3, persecucion y plataformas de SyT | [Sistemas y Tecnologia](docs/juego/syt.md) |
 | Mundo, constantes y loop | [Runtime](docs/juego/runtime.md) |
 | Teclado | [Controles](docs/juego/controles.md) |
 | Estado y futuras mejoras | [Estado](docs/juego/estado.md) |
